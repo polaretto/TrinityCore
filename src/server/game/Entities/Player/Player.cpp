@@ -19447,6 +19447,46 @@ void Player::SaveToDB(bool create /*=false*/)
         pet->SavePetToDB(PET_SAVE_AS_CURRENT);
 }
 
+//Saving quest function that prevents sensible data loss in case of crash
+void Player::SaveQuest()
+{
+    if (sWorld->getBoolConfig(CONFIG_QUEST_SAVE_SYSTEM))
+    {
+
+        PreparedStatement* stmt = NULL;
+        uint8 index = 0;
+
+        // Update query
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_CHARACTER);
+        stmt->setUInt8(index++, getLevel());
+        stmt->setUInt32(index++, GetUInt32Value(PLAYER_XP));
+        stmt->setUInt32(index++, GetMoney());
+        // Index
+        stmt->setUInt32(index++, GetGUIDLow());
+
+
+        SQLTransaction trans = CharacterDatabase.BeginTransaction();
+
+        trans->Append(stmt);
+
+        _SaveQuestStatus(trans);
+        _SaveDailyQuestStatus(trans);
+        _SaveWeeklyQuestStatus(trans);
+        _SaveSeasonalQuestStatus(trans);
+        _SaveMonthlyQuestStatus(trans);
+        _SaveTalents(trans);
+        m_achievementMgr->SaveToDB(trans);
+        m_reputationMgr->SaveToDB(trans);
+        SaveInventoryAndGoldToDB(trans);
+
+        CharacterDatabase.CommitTransaction(trans);
+
+        // save pet (hunter pet level and experience and all type pets health/mana).
+        if (Pet* pet = GetPet())
+            pet->SavePetToDB(PET_SAVE_AS_CURRENT);
+    }
+}
+
 // fast save function for item/money cheating preventing - save only inventory and money state
 void Player::SaveInventoryAndGoldToDB(SQLTransaction& trans)
 {
