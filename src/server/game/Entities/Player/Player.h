@@ -1215,13 +1215,13 @@ class Player : public Unit, public GridObject<Player>
         uint32 GetPhaseMaskForSpawn() const;                // used for proper set phase for DB at GM-mode creature/GO spawn
 
         /// Handles said message in regular chat based on declared language and in config pre-defined Range.
-        void Say(std::string const& text, Language language, WorldObject const* = nullptr) override;
+        void Say(std::string const& text, const uint32 language);
         /// Handles yelled message in regular chat based on declared language and in config pre-defined Range.
-        void Yell(std::string const& text, Language language, WorldObject const* = nullptr) override;
+        void Yell(std::string const& text, const uint32 language);
         /// Outputs an universal text which is supposed to be an action.
-        void TextEmote(std::string const& text, WorldObject const* = nullptr, bool = false) override;
+        void TextEmote(std::string const& text);
         /// Handles whispers from Addons and players based on sender, receiver's guid and language.
-        void Whisper(std::string const& text, Language language, Player* receiver, bool = false) override;
+        void Whisper(std::string const& text, const uint32 language, uint64 receiver);
 
         /*********************************************************/
         /***                    STORAGE SYSTEM                 ***/
@@ -1505,10 +1505,10 @@ class Player : public Unit, public GridObject<Player>
         /*********************************************************/
 
         void SaveToDB(bool create = false);
-        void SaveQuest();
+        void SaveQuest();  //Saving quest function that prevents sensible data loss in case of crash
         void SaveInventoryAndGoldToDB(SQLTransaction& trans);                    // fast save function for item/money cheating preventing
         void SaveGoldToDB(SQLTransaction& trans);
-
+        
         static void SetUInt32ValueInArray(Tokenizer& data, uint16 index, uint32 value);
         static void SetFloatValueInArray(Tokenizer& data, uint16 index, float value);
         static void Customize(uint64 guid, uint8 gender, uint8 skin, uint8 face, uint8 hairStyle, uint8 hairColor, uint8 facialHair);

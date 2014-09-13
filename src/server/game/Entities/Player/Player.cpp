@@ -3807,8 +3807,7 @@ bool Player::AddSpell(uint32 spellId, bool active, bool learning, bool dependent
                 if (!pSkill)
                     continue;
 
-                ///@todo: confirm if rogues start with lockpicking skill at level 1 but only receive the spell to use it at level 16
-                if ((_spell_idx->second->AutolearnType == SKILL_LINE_ABILITY_LEARNED_ON_SKILL_LEARN && !HasSkill(pSkill->id)) || (pSkill->id == SKILL_LOCKPICKING && _spell_idx->second->max_value == 0))
+                if (_spell_idx->second->AutolearnType == SKILL_LINE_ABILITY_LEARNED_ON_SKILL_LEARN && !HasSkill(pSkill->id))
                     LearnDefaultSkill(pSkill->id, 0);
 
                 if (pSkill->id == SKILL_MOUNTS && !Has310Flyer(false))
@@ -20568,27 +20567,27 @@ void Player::StopCastingCharm()
     }
 }
 
-void Player::Say(std::string const& text, Language language, WorldObject const* /*= nullptr*/)
+void Player::Say(const std::string& text, const uint32 language)
 {
     std::string _text(text);
     sScriptMgr->OnPlayerChat(this, CHAT_MSG_SAY, language, _text);
 
     WorldPacket data;
-    ChatHandler::BuildChatPacket(data, CHAT_MSG_SAY, language, this, this, _text);
+    ChatHandler::BuildChatPacket(data, CHAT_MSG_SAY, Language(language), this, this, _text);
     SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_SAY), true);
 }
 
-void Player::Yell(std::string const& text, Language language, WorldObject const* /*= nullptr*/)
+void Player::Yell(const std::string& text, const uint32 language)
 {
     std::string _text(text);
     sScriptMgr->OnPlayerChat(this, CHAT_MSG_YELL, language, _text);
 
     WorldPacket data;
-    ChatHandler::BuildChatPacket(data, CHAT_MSG_YELL, language, this, this, _text);
+    ChatHandler::BuildChatPacket(data, CHAT_MSG_YELL, Language(language), this, this, _text);
     SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_YELL), true);
 }
 
-void Player::TextEmote(std::string const& text, WorldObject const* /*= nullptr*/, bool /*= false*/)
+void Player::TextEmote(const std::string& text)
 {
     std::string _text(text);
     sScriptMgr->OnPlayerChat(this, CHAT_MSG_EMOTE, LANG_UNIVERSAL, _text);
@@ -20598,40 +20597,40 @@ void Player::TextEmote(std::string const& text, WorldObject const* /*= nullptr*/
     SendMessageToSetInRange(&data, sWorld->getFloatConfig(CONFIG_LISTEN_RANGE_TEXTEMOTE), true, !GetSession()->HasPermission(rbac::RBAC_PERM_TWO_SIDE_INTERACTION_CHAT));
 }
 
-void Player::Whisper(std::string const& text, Language language, Player* target, bool /*= false*/)
+void Player::Whisper(const std::string& text, uint32 language, uint64 receiver)
 {
-    ASSERT(target);
-
     bool isAddonMessage = language == LANG_ADDON;
 
     if (!isAddonMessage)                                    // if not addon data
         language = LANG_UNIVERSAL;                          // whispers should always be readable
 
+    Player* rPlayer = ObjectAccessor::FindPlayer(receiver);
+
     std::string _text(text);
-    sScriptMgr->OnPlayerChat(this, CHAT_MSG_WHISPER, language, _text, target);
+    sScriptMgr->OnPlayerChat(this, CHAT_MSG_WHISPER, language, _text, rPlayer);
 
     WorldPacket data;
     ChatHandler::BuildChatPacket(data, CHAT_MSG_WHISPER, Language(language), this, this, _text);
-    target->GetSession()->SendPacket(&data);
+    rPlayer->GetSession()->SendPacket(&data);
 
     // rest stuff shouldn't happen in case of addon message
     if (isAddonMessage)
         return;
 
-    ChatHandler::BuildChatPacket(data, CHAT_MSG_WHISPER_INFORM, Language(language), target, target, _text);
+    ChatHandler::BuildChatPacket(data, CHAT_MSG_WHISPER_INFORM, Language(language), rPlayer, rPlayer, _text);
     GetSession()->SendPacket(&data);
 
-    if (!isAcceptWhispers() && !IsGameMaster() && !target->IsGameMaster())
+    if (!isAcceptWhispers() && !IsGameMaster() && !rPlayer->IsGameMaster())
     {
         SetAcceptWhispers(true);
         ChatHandler(GetSession()).SendSysMessage(LANG_COMMAND_WHISPERON);
     }
 
     // announce afk or dnd message
-    if (target->isAFK())
-        ChatHandler(GetSession()).PSendSysMessage(LANG_PLAYER_AFK, target->GetName().c_str(), target->autoReplyMsg.c_str());
-    else if (target->isDND())
-        ChatHandler(GetSession()).PSendSysMessage(LANG_PLAYER_DND, target->GetName().c_str(), target->autoReplyMsg.c_str());
+    if (rPlayer->isAFK())
+        ChatHandler(GetSession()).PSendSysMessage(LANG_PLAYER_AFK, rPlayer->GetName().c_str(), rPlayer->autoReplyMsg.c_str());
+    else if (rPlayer->isDND())
+        ChatHandler(GetSession()).PSendSysMessage(LANG_PLAYER_DND, rPlayer->GetName().c_str(), rPlayer->autoReplyMsg.c_str());
 }
 
 Item* Player::GetMItem(uint32 id)
@@ -23187,8 +23186,6 @@ void Player::LearnDefaultSkill(uint32 skillId, uint16 rank)
                 skillValue = std::min(std::max<uint16>({ 1, uint16((getLevel() - 1) * 5) }), maxValue);
             else if (skillId == SKILL_FIST_WEAPONS)
                 skillValue = std::max<uint16>(1, GetSkillValue(SKILL_UNARMED));
-            else if (skillId == SKILL_LOCKPICKING)
-                skillValue = std::max<uint16>(1, GetSkillValue(SKILL_LOCKPICKING));
 
             SetSkill(skillId, 0, skillValue, maxValue);
             break;
