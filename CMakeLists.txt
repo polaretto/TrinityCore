@@ -57,7 +57,7 @@ include(CheckPlatform)
 set(OPENSSL_EXPECTED_VERSION 1.0.0)
 
 # Enable testing
-set(TESTING ON)
+set(BUILD_TESTING ON)
 
 find_package(PCHSupport)
 find_package(OpenSSL REQUIRED)
