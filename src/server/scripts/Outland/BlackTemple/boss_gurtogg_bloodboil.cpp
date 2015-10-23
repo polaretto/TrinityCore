@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -68,12 +68,32 @@ public:
     {
         boss_gurtogg_bloodboilAI(Creature* creature) : ScriptedAI(creature)
         {
+            Initialize();
             instance = creature->GetInstanceScript();
+        }
+
+        void Initialize()
+        {
+            TargetGUID.Clear();
+            TargetThreat = 0;
+
+            BloodboilTimer = 10000;
+            BloodboilCount = 0;
+            AcidGeyserTimer = 1000;
+            AcidicWoundTimer = 6000;
+            ArcingSmashTimer = 19000;
+            EnrageTimer = 600000;
+            FelAcidTimer = 25000;
+            EjectTimer = 10000;
+            BewilderingStrikeTimer = 15000;
+            PhaseChangeTimer = 60000;
+
+            Phase1 = true;
         }
 
         InstanceScript* instance;
 
-        uint64 TargetGUID;
+        ObjectGuid TargetGUID;
 
         float TargetThreat;
 
@@ -94,22 +114,7 @@ public:
         {
             instance->SetBossState(DATA_GURTOGG_BLOODBOIL, NOT_STARTED);
 
-            TargetGUID = 0;
-
-            TargetThreat = 0;
-
-            BloodboilTimer = 10000;
-            BloodboilCount = 0;
-            AcidGeyserTimer = 1000;
-            AcidicWoundTimer = 6000;
-            ArcingSmashTimer = 19000;
-            EnrageTimer = 600000;
-            FelAcidTimer = 25000;
-            EjectTimer = 10000;
-            BewilderingStrikeTimer = 15000;
-            PhaseChangeTimer = 60000;
-
-            Phase1 = true;
+            Initialize();
 
             me->ApplySpellImmune(0, IMMUNITY_STATE, SPELL_AURA_MOD_TAUNT, false);
             me->ApplySpellImmune(0, IMMUNITY_EFFECT, SPELL_EFFECT_ATTACK_ME, false);
@@ -134,7 +139,7 @@ public:
             Talk(SAY_DEATH);
         }
 
-        void RevertThreatOnTarget(uint64 guid)
+        void RevertThreatOnTarget(ObjectGuid guid)
         {
             if (Unit* unit = ObjectAccessor::GetUnit(*me, guid))
             {
@@ -256,9 +261,9 @@ public:
                 }
                 else                                           // Encounter is a loop pretty much. Phase 1 -> Phase 2 -> Phase 1 -> Phase 2 till death or enrage
                 {
-                    if (TargetGUID)
+                    if (!TargetGUID.IsEmpty())
                         RevertThreatOnTarget(TargetGUID);
-                    TargetGUID = 0;
+                    TargetGUID.Clear();
                     Phase1 = true;
                     BloodboilTimer = 10000;
                     BloodboilCount = 0;

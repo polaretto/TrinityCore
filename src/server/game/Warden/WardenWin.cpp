@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -16,7 +16,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "Cryptography/HMACSHA1.h"
+#include "Cryptography/HmacHash.h"
 #include "Cryptography/WardenKeyGeneration.h"
 #include "Common.h"
 #include "WorldPacket.h"
@@ -24,7 +24,6 @@
 #include "Log.h"
 #include "Opcodes.h"
 #include "ByteBuffer.h"
-#include <openssl/md5.h>
 #include "Database/DatabaseEnv.h"
 #include "World.h"
 #include "Player.h"
@@ -32,7 +31,8 @@
 #include "WardenWin.h"
 #include "WardenModuleWin.h"
 #include "WardenCheckMgr.h"
-#include "AccountMgr.h"
+
+#include <openssl/md5.h>
 
 WardenWin::WardenWin() : Warden(), _serverTicks(0) {}
 
@@ -283,7 +283,7 @@ void WardenWin::RequestData()
             {
                 uint32 seed = rand32();
                 buff << uint32(seed);
-                HmacHash hmac(4, (uint8*)&seed);
+                HmacSha1 hmac(4, (uint8*)&seed);
                 hmac.UpdateData(wd->Str);
                 hmac.Finalize();
                 buff.append(hmac.GetDigest(), hmac.GetLength());

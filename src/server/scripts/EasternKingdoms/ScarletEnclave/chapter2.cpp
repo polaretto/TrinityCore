@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -60,12 +60,12 @@ public:
         {
             speechTimer = 0;
             speechCounter = 0;
-            playerGUID = 0;
+            playerGUID.Clear();
         }
 
         uint32 speechTimer;
         uint32 speechCounter;
-        uint64 playerGUID;
+        ObjectGuid playerGUID;
 
         void Reset() override
         {
@@ -223,7 +223,7 @@ public:
         {
             wave = 0;
             waveTimer = 3000;
-            valrothGUID = 0;
+            valrothGUID.Clear();
         }
 
         void Reset() override
@@ -357,7 +357,7 @@ public:
     private:
         uint8 wave;
         uint32 waveTimer;
-        uint64 valrothGUID;
+        ObjectGuid valrothGUID;
 
     };
 
@@ -642,12 +642,12 @@ public:
         {
             ExecuteSpeech_Timer = 0;
             ExecuteSpeech_Counter = 0;
-            PlayerGUID = 0;
+            PlayerGUID.Clear();
         }
 
         uint32 ExecuteSpeech_Timer;
         uint32 ExecuteSpeech_Counter;
-        uint64 PlayerGUID;
+        ObjectGuid PlayerGUID;
 
         void Reset() override
         {
@@ -708,7 +708,7 @@ public:
         void MoveInLineOfSight(Unit* who) override
 
         {
-            if (PlayerGUID || who->GetTypeId() != TYPEID_PLAYER || !who->IsWithinDist(me, INTERACTION_DISTANCE))
+            if (!PlayerGUID.IsEmpty() || who->GetTypeId() != TYPEID_PLAYER || !who->IsWithinDist(me, INTERACTION_DISTANCE))
                 return;
 
             if (MeetQuestCondition(who->ToPlayer()))
@@ -717,7 +717,7 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-            if (PlayerGUID && !me->GetVictim() && me->IsAlive())
+            if (!PlayerGUID.IsEmpty() && !me->GetVictim() && me->IsAlive())
             {
                 if (ExecuteSpeech_Timer <= diff)
                 {

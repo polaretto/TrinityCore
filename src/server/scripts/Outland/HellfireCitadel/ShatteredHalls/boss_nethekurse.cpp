@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -83,12 +83,13 @@ class boss_grand_warlock_nethekurse : public CreatureScript
 
         struct boss_grand_warlock_nethekurseAI : public BossAI
         {
-            boss_grand_warlock_nethekurseAI(Creature* creature) : BossAI(creature, DATA_NETHEKURSE) { }
-
-            void Reset() override
+            boss_grand_warlock_nethekurseAI(Creature* creature) : BossAI(creature, DATA_NETHEKURSE)
             {
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                Initialize();
+            }
 
+            void Initialize()
+            {
                 IsIntroEvent = false;
                 IntroOnce = false;
                 IsMainEvent = false;
@@ -105,11 +106,18 @@ class boss_grand_warlock_nethekurse : public CreatureScript
                 Cleave_Timer = 5000;
             }
 
+            void Reset() override
+            {
+                _Reset();
+                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
+                Initialize();
+            }
+
             void JustDied(Unit* /*killer*/) override
             {
+                _JustDied();
                 Talk(SAY_DIE);
-
-                instance->SetBossState(DATA_NETHEKURSE, DONE);
             }
 
             void SetData(uint32 data, uint32 value) override
@@ -323,7 +331,7 @@ class npc_fel_orc_convert : public CreatureScript
             {
                 events.ScheduleEvent(EVENT_HEMORRHAGE, 3000);
 
-                if (Creature* Kurse = ObjectAccessor::GetCreature(*me, instance->GetData64(NPC_GRAND_WARLOCK_NETHEKURSE)))
+                if (Creature* Kurse = ObjectAccessor::GetCreature(*me, instance->GetGuidData(NPC_GRAND_WARLOCK_NETHEKURSE)))
                     if (me->IsWithinDist(Kurse, 45.0f))
                         Kurse->AI()->SetData(SETDATA_DATA, SETDATA_PEON_AGGRO);
             }
@@ -333,7 +341,7 @@ class npc_fel_orc_convert : public CreatureScript
                 if (instance->GetBossState(DATA_NETHEKURSE) != IN_PROGRESS)
                     return;
 
-                if (Creature* Kurse = ObjectAccessor::GetCreature(*me, instance->GetData64(NPC_GRAND_WARLOCK_NETHEKURSE)))
+                if (Creature* Kurse = ObjectAccessor::GetCreature(*me, instance->GetGuidData(NPC_GRAND_WARLOCK_NETHEKURSE)))
                     Kurse->AI()->SetData(SETDATA_DATA, SETDATA_PEON_DEATH);
             }
 

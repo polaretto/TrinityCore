@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -86,13 +86,19 @@ class boss_grandmaster_vorpil : public CreatureScript
         {
             boss_grandmaster_vorpilAI(Creature* creature) : BossAI(creature, DATA_GRANDMASTER_VORPIL)
             {
+                Initialize();
                 _intro = false;
+            }
+
+            void Initialize()
+            {
+                _helpYell = false;
             }
 
             void Reset() override
             {
                 _Reset();
-                _helpYell = false;
+                Initialize();
             }
 
             void SummonPortals()
@@ -176,8 +182,7 @@ class boss_grandmaster_vorpil : public CreatureScript
                             break;
                         case EVENT_DRAW_SHADOWS:
                             {
-                                Map* map = me->GetMap();
-                                Map::PlayerList const &PlayerList = map->GetPlayers();
+                                Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
                                 for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                                     if (Player* i_pl = i->GetSource())
                                         if (i_pl->IsAlive() && !i_pl->HasAura(SPELL_BANISH))
@@ -223,13 +228,19 @@ class npc_voidtraveler : public CreatureScript
         {
             npc_voidtravelerAI(Creature* creature) : ScriptedAI(creature)
             {
+                Initialize();
                 _instance = creature->GetInstanceScript();
+            }
+
+            void Initialize()
+            {
+                _moveTimer = 0;
+                _sacrificed = false;
             }
 
             void Reset() override
             {
-                _moveTimer = 0;
-                _sacrificed = false;
+                Initialize();
             }
 
             void EnterCombat(Unit* /*who*/) override { }
@@ -238,7 +249,7 @@ class npc_voidtraveler : public CreatureScript
             {
                 if (_moveTimer <= diff)
                 {
-                    Creature* Vorpil = ObjectAccessor::GetCreature(*me, _instance->GetData64(DATA_GRANDMASTER_VORPIL));
+                    Creature* Vorpil = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_GRANDMASTER_VORPIL));
                     if (!Vorpil)
                         return;
 

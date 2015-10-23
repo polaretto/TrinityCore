@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -67,13 +67,12 @@ public:
     {
         boss_najentusAI(Creature* creature) : BossAI(creature, DATA_HIGH_WARLORD_NAJENTUS)
         {
-            SpineTargetGUID = 0;
         }
 
         void Reset() override
         {
             _Reset();
-            SpineTargetGUID = 0;
+            SpineTargetGUID.Clear();
         }
 
         void KilledUnit(Unit* /*victim*/) override
@@ -115,7 +114,7 @@ public:
             Unit* target = ObjectAccessor::GetUnit(*me, SpineTargetGUID);
             if (target && target->HasAura(SPELL_IMPALING_SPINE))
                 target->RemoveAurasDueToSpell(SPELL_IMPALING_SPINE);
-            SpineTargetGUID=0;
+            SpineTargetGUID.Clear();
             return true;
         }
 
@@ -181,7 +180,7 @@ public:
         }
 
     private:
-        uint64 SpineTargetGUID;
+        ObjectGuid SpineTargetGUID;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
@@ -198,7 +197,7 @@ public:
     bool OnGossipHello(Player* player, GameObject* go) override
     {
         if (InstanceScript* instance = go->GetInstanceScript())
-            if (Creature* Najentus = ObjectAccessor::GetCreature(*go, instance->GetData64(DATA_HIGH_WARLORD_NAJENTUS)))
+            if (Creature* Najentus = ObjectAccessor::GetCreature(*go, instance->GetGuidData(DATA_HIGH_WARLORD_NAJENTUS)))
                 if (ENSURE_AI(boss_najentus::boss_najentusAI, Najentus->AI())->RemoveImpalingSpine())
                 {
                     player->CastSpell(player, SPELL_CREATE_NAJENTUS_SPINE, true);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -136,24 +136,14 @@ class boss_warbringer_omrogg : public CreatureScript
         {
             boss_warbringer_omroggAI(Creature* creature) : BossAI(creature, DATA_OMROGG)
             {
-                LeftHeadGUID  = 0;
-                RightHeadGUID = 0;
+                Initialize();
+                iaggro = 0;
+                ithreat = 0;
+                ikilling = 0;
             }
 
-            void Reset() override
+            void Initialize()
             {
-                if (Unit* LeftHead  = ObjectAccessor::GetUnit(*me, LeftHeadGUID))
-                {
-                    LeftHead->setDeathState(JUST_DIED);
-                    LeftHeadGUID = 0;
-                }
-
-                if (Unit* RightHead  = ObjectAccessor::GetUnit(*me, RightHeadGUID))
-                {
-                    RightHead->setDeathState(JUST_DIED);
-                    RightHeadGUID = 0;
-                }
-
                 AggroYell = false;
                 ThreatYell = false;
                 ThreatYell2 = false;
@@ -166,6 +156,24 @@ class boss_warbringer_omrogg : public CreatureScript
                 BurningMaul_Timer = 25000;
                 ThunderClap_Timer = 15000;
                 ResetThreat_Timer = 30000;
+            }
+
+            void Reset() override
+            {
+                _Reset();
+                if (Unit* LeftHead  = ObjectAccessor::GetUnit(*me, LeftHeadGUID))
+                {
+                    LeftHead->setDeathState(JUST_DIED);
+                    LeftHeadGUID.Clear();
+                }
+
+                if (Unit* RightHead  = ObjectAccessor::GetUnit(*me, RightHeadGUID))
+                {
+                    RightHead->setDeathState(JUST_DIED);
+                    RightHeadGUID.Clear();
+                }
+
+                Initialize();
 
                 instance->SetData(DATA_OMROGG, NOT_STARTED);   //End boss can use this later. O'mrogg must be defeated(DONE) or he will come to aid.
             }
@@ -250,14 +258,14 @@ class boss_warbringer_omrogg : public CreatureScript
                 Creature* LeftHead  = ObjectAccessor::GetCreature(*me, LeftHeadGUID);
                 Creature* RightHead = ObjectAccessor::GetCreature(*me, RightHeadGUID);
 
+                _JustDied();
+
                 if (!LeftHead || !RightHead)
                     return;
 
                 LeftHead->AI()->Talk(YELL_DIE_L);
 
                 RightHead->AI()->SetData(SETDATA_DATA, SETDATA_YELL);
-
-                instance->SetBossState(DATA_OMROGG, DONE);
             }
 
             void UpdateAI(uint32 diff) override
@@ -363,8 +371,8 @@ class boss_warbringer_omrogg : public CreatureScript
             }
 
             private:
-                uint64 LeftHeadGUID;
-                uint64 RightHeadGUID;
+                ObjectGuid LeftHeadGUID;
+                ObjectGuid RightHeadGUID;
                 int iaggro;
                 int ithreat;
                 int ikilling;
@@ -409,7 +417,7 @@ class npc_omrogg_heads : public CreatureScript
 
             void EnterCombat(Unit* /*who*/) override { }
 
-            void SetData(uint32 data, uint32 value)
+            void SetData(uint32 data, uint32 value) override
             {
                 if (data == SETDATA_DATA && value == SETDATA_YELL)
                 {

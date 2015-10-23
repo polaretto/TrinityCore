@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -131,13 +131,13 @@ enum Misc
     DISPLAY_INVISIBLE                       = 11686
 };
 
-uint64 getOrphanGUID(Player* player, uint32 orphan)
+ObjectGuid getOrphanGUID(Player* player, uint32 orphan)
 {
     if (Aura* orphanOut = player->GetAura(SPELL_ORPHAN_OUT))
         if (orphanOut->GetCaster() && orphanOut->GetCaster()->GetEntry() == orphan)
             return orphanOut->GetCaster()->GetGUID();
 
-    return 0;
+    return ObjectGuid::Empty;
 }
 
 /*######
@@ -159,8 +159,8 @@ class npc_winterfin_playmate : public CreatureScript
             {
                 timer = 0;
                 phase = 0;
-                playerGUID = 0;
-                orphanGUID = 0;
+                playerGUID.Clear();
+                orphanGUID.Clear();
             }
 
             void Reset() override
@@ -176,7 +176,7 @@ class npc_winterfin_playmate : public CreatureScript
                         {
                             playerGUID = player->GetGUID();
                             orphanGUID = getOrphanGUID(player, ORPHAN_ORACLE);
-                            if (orphanGUID)
+                            if (!orphanGUID.IsEmpty())
                                 phase = 1;
                         }
             }
@@ -235,8 +235,8 @@ class npc_winterfin_playmate : public CreatureScript
         private:
             uint32 timer;
             int8 phase;
-            uint64 playerGUID;
-            uint64 orphanGUID;
+            ObjectGuid playerGUID;
+            ObjectGuid orphanGUID;
 
         };
 
@@ -265,8 +265,8 @@ class npc_snowfall_glade_playmate : public CreatureScript
             {
                 timer = 0;
                 phase = 0;
-                playerGUID = 0;
-                orphanGUID = 0;
+                playerGUID.Clear();
+                orphanGUID.Clear();
             }
 
             void Reset() override
@@ -283,7 +283,7 @@ class npc_snowfall_glade_playmate : public CreatureScript
                         {
                             playerGUID = player->GetGUID();
                             orphanGUID = getOrphanGUID(player, ORPHAN_WOLVAR);
-                            if (orphanGUID)
+                            if (!orphanGUID.IsEmpty())
                                 phase = 1;
                         }
             }
@@ -342,8 +342,8 @@ class npc_snowfall_glade_playmate : public CreatureScript
         private:
             uint32 timer;
             int8 phase;
-            uint64 playerGUID;
-            uint64 orphanGUID;
+            ObjectGuid playerGUID;
+            ObjectGuid orphanGUID;
         };
 
         CreatureAI* GetAI(Creature* pCreature) const override
@@ -372,8 +372,8 @@ class npc_the_biggest_tree : public CreatureScript
             {
                 timer = 1000;
                 phase = 0;
-                playerGUID = 0;
-                orphanGUID = 0;
+                playerGUID.Clear();
+                orphanGUID.Clear();
             }
 
             void Reset() override
@@ -389,7 +389,7 @@ class npc_the_biggest_tree : public CreatureScript
                         {
                             playerGUID = player->GetGUID();
                             orphanGUID = getOrphanGUID(player, ORPHAN_ORACLE);
-                            if (orphanGUID)
+                            if (!orphanGUID.IsEmpty())
                                 phase = 1;
                         }
             }
@@ -436,8 +436,8 @@ class npc_the_biggest_tree : public CreatureScript
         private:
             uint32 timer;
             uint8 phase;
-            uint64 playerGUID;
-            uint64 orphanGUID;
+            ObjectGuid playerGUID;
+            ObjectGuid orphanGUID;
 
         };
 
@@ -466,8 +466,8 @@ class npc_high_oracle_soo_roo : public CreatureScript
             {
                 timer = 0;
                 phase = 0;
-                playerGUID = 0;
-                orphanGUID = 0;
+                playerGUID.Clear();
+                orphanGUID.Clear();
             }
 
             void Reset() override
@@ -484,7 +484,7 @@ class npc_high_oracle_soo_roo : public CreatureScript
                         {
                             playerGUID = player->GetGUID();
                             orphanGUID = getOrphanGUID(player, ORPHAN_ORACLE);
-                            if (orphanGUID)
+                            if (!orphanGUID.IsEmpty())
                                 phase = 1;
                         }
             }
@@ -533,8 +533,8 @@ class npc_high_oracle_soo_roo : public CreatureScript
         private:
             uint32 timer;
             int8 phase;
-            uint64 playerGUID;
-            uint64 orphanGUID;
+            ObjectGuid playerGUID;
+            ObjectGuid orphanGUID;
 
         };
 
@@ -563,8 +563,8 @@ class npc_elder_kekek : public CreatureScript
             {
                 timer = 0;
                 phase = 0;
-                playerGUID = 0;
-                orphanGUID = 0;
+                playerGUID.Clear();
+                orphanGUID.Clear();
             }
 
             void Reset() override
@@ -580,7 +580,7 @@ class npc_elder_kekek : public CreatureScript
                         {
                             playerGUID = player->GetGUID();
                             orphanGUID = getOrphanGUID(player, ORPHAN_WOLVAR);
-                            if (orphanGUID)
+                            if (!orphanGUID.IsEmpty())
                                 phase = 1;
                         }
             }
@@ -628,8 +628,8 @@ class npc_elder_kekek : public CreatureScript
         private:
             uint32 timer;
             int8 phase;
-            uint64 playerGUID;
-            uint64 orphanGUID;
+            ObjectGuid playerGUID;
+            ObjectGuid orphanGUID;
 
         };
 
@@ -659,8 +659,8 @@ class npc_the_etymidian : public CreatureScript
             {
                 timer = 0;
                 phase = 0;
-                playerGUID = 0;
-                orphanGUID = 0;
+                playerGUID.Clear();
+                orphanGUID.Clear();
             }
 
             void Reset() override
@@ -676,7 +676,7 @@ class npc_the_etymidian : public CreatureScript
                         {
                             playerGUID = player->GetGUID();
                             orphanGUID = getOrphanGUID(player, ORPHAN_ORACLE);
-                            if (orphanGUID)
+                            if (!orphanGUID.IsEmpty())
                                 phase = 1;
                         }
             }
@@ -732,8 +732,8 @@ class npc_the_etymidian : public CreatureScript
         private:
             uint32 timer;
             int8 phase;
-            uint64 playerGUID;
-            uint64 orphanGUID;
+            ObjectGuid playerGUID;
+            ObjectGuid orphanGUID;
 
         };
 
@@ -762,8 +762,8 @@ class npc_alexstraza_the_lifebinder : public CreatureScript
             {
                 timer = 0;
                 phase = 0;
-                playerGUID = 0;
-                orphanGUID = 0;
+                playerGUID.Clear();
+                orphanGUID.Clear();
             }
 
             void Reset() override
@@ -797,14 +797,14 @@ class npc_alexstraza_the_lifebinder : public CreatureScript
                         {
                             playerGUID = player->GetGUID();
                             orphanGUID = getOrphanGUID(player, ORPHAN_ORACLE);
-                            if (orphanGUID)
+                            if (!orphanGUID.IsEmpty())
                                 phase = 1;
                         }
                         else if (player->GetQuestStatus(QUEST_THE_DRAGON_QUEEN_WOLVAR) == QUEST_STATUS_INCOMPLETE)
                         {
                             playerGUID = player->GetGUID();
                             orphanGUID = getOrphanGUID(player, ORPHAN_WOLVAR);
-                            if (orphanGUID)
+                            if (!orphanGUID.IsEmpty())
                                 phase = 7;
                         }
                     }
@@ -900,8 +900,8 @@ class npc_alexstraza_the_lifebinder : public CreatureScript
             private:
                 int8 phase;
                 uint32 timer;
-                uint64 playerGUID;
-                uint64 orphanGUID;
+                ObjectGuid playerGUID;
+                ObjectGuid orphanGUID;
 
         };
 
@@ -920,7 +920,7 @@ class at_bring_your_orphan_to : public AreaTriggerScript
     public:
         at_bring_your_orphan_to() : AreaTriggerScript("at_bring_your_orphan_to") { }
 
-        bool OnTrigger(Player* player, AreaTriggerEntry const* trigger) override
+        bool OnTrigger(Player* player, AreaTriggerEntry const* areaTrigger, bool /*entered*/) override
         {
             if (player->isDead() || !player->HasAura(SPELL_ORPHAN_OUT))
                 return false;
@@ -928,7 +928,7 @@ class at_bring_your_orphan_to : public AreaTriggerScript
             uint32 questId = 0;
             uint32 orphanId = 0;
 
-            switch (trigger->id)
+            switch (areaTrigger->ID)
             {
                 case AT_DOWN_AT_THE_DOCKS:
                     questId = QUEST_DOWN_AT_THE_DOCKS;
@@ -960,7 +960,7 @@ class at_bring_your_orphan_to : public AreaTriggerScript
                     break;
             }
 
-            if (questId && orphanId && getOrphanGUID(player, orphanId) && player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
+            if (questId && orphanId && !getOrphanGUID(player, orphanId).IsEmpty() && player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
                 player->AreaExploredOrEventHappens(questId);
 
             return true;
@@ -1021,7 +1021,7 @@ class npc_cw_area_trigger : public CreatureScript
                                     orphanId = ORPHAN_BLOOD_ELF;
                                     break;
                                 case NPC_SILVERMOON_01_CW_TRIGGER:
-                                    if (player->GetQuestStatus(QUEST_NOW_WHEN_I_GROW_UP) == QUEST_STATUS_INCOMPLETE && getOrphanGUID(player, ORPHAN_BLOOD_ELF))
+                                    if (player->GetQuestStatus(QUEST_NOW_WHEN_I_GROW_UP) == QUEST_STATUS_INCOMPLETE && !getOrphanGUID(player, ORPHAN_BLOOD_ELF).IsEmpty())
                                     {
                                         player->AreaExploredOrEventHappens(QUEST_NOW_WHEN_I_GROW_UP);
                                         if (player->GetQuestStatus(QUEST_NOW_WHEN_I_GROW_UP) == QUEST_STATUS_COMPLETE)
@@ -1051,7 +1051,7 @@ class npc_cw_area_trigger : public CreatureScript
                                     }
                                     break;
                             }
-                            if (questId && orphanId && getOrphanGUID(player, orphanId) && player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
+                            if (questId && orphanId && !getOrphanGUID(player, orphanId).IsEmpty() && player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
                                 player->AreaExploredOrEventHappens(questId);
                         }
             }

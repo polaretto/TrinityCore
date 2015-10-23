@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -18,13 +18,6 @@
 #include "ScriptLoader.h"
 #include "World.h"
 
-//examples
-void AddSC_example_creature();
-void AddSC_example_escort();
-void AddSC_example_gossip_codebox();
-void AddSC_example_misc();
-void AddSC_example_commandscript();
-
 // spells
 void AddSC_deathknight_spell_scripts();
 void AddSC_druid_spell_scripts();
@@ -39,7 +32,6 @@ void AddSC_warlock_spell_scripts();
 void AddSC_warrior_spell_scripts();
 void AddSC_quest_spell_scripts();
 void AddSC_item_spell_scripts();
-void AddSC_example_spell_scripts();
 void AddSC_holiday_spell_scripts();
 
 void AddSC_SmartScripts();
@@ -50,6 +42,7 @@ void AddSC_achievement_commandscript();
 void AddSC_ahbot_commandscript();
 void AddSC_arena_commandscript();
 void AddSC_ban_commandscript();
+void AddSC_battlenet_account_commandscript();
 void AddSC_bf_commandscript();
 void AddSC_cast_commandscript();
 void AddSC_character_commandscript();
@@ -107,6 +100,17 @@ void AddSC_boss_balinda();
 void AddSC_boss_drekthar();
 void AddSC_boss_galvangar();
 void AddSC_boss_vanndar();
+void AddSC_boss_alizabal();                  //Baradin Hold
+void AddSC_boss_occuthar();
+void AddSC_boss_pit_lord_argaloth();
+void AddSC_instance_baradin_hold();
+void AddSC_boss_romogg_bonecrusher();        //Blackrock Caverns
+void AddSC_boss_corla();
+void AddSC_boss_karsh_steelbender();
+void AddSC_boss_beauty();
+void AddSC_boss_ascendant_lord_obsidius();
+void AddSC_blackrock_caverns();
+void AddSC_instance_blackrock_caverns();
 void AddSC_blackrock_depths();               //Blackrock Depths
 void AddSC_boss_ambassador_flamelash();
 void AddSC_boss_anubshiah();
@@ -243,24 +247,19 @@ void AddSC_boss_halazzi();
 void AddSC_boss_hex_lord_malacrass();
 void AddSC_boss_janalai();
 void AddSC_boss_nalorakk();
-void AddSC_boss_zuljin();
+void AddSC_boss_daakara();
 void AddSC_instance_zulaman();
 void AddSC_zulaman();
-void AddSC_boss_jeklik();                    //Zul'Gurub
-void AddSC_boss_venoxis();
-void AddSC_boss_marli();
-void AddSC_boss_mandokir();
-void AddSC_boss_gahzranka();
-void AddSC_boss_thekal();
-void AddSC_boss_arlokk();
-void AddSC_boss_jindo();
-void AddSC_boss_hakkar();
-void AddSC_boss_grilek();
+void AddSC_boss_grilek();                   // Zul'Gurub
 void AddSC_boss_hazzarah();
+void AddSC_boss_jindo_the_godbreaker();
+void AddSC_boss_kilnara();
+void AddSC_boss_mandokir();
 void AddSC_boss_renataki();
+void AddSC_boss_venoxis();
 void AddSC_boss_wushoolay();
+void AddSC_boss_zanzil();
 void AddSC_instance_zulgurub();
-
 //void AddSC_alterac_mountains();
 void AddSC_arathi_highlands();
 void AddSC_blasted_lands();
@@ -351,12 +350,17 @@ void AddSC_instance_wailing_caverns();
 void AddSC_boss_zum_rah();                   //Zul'Farrak
 void AddSC_zulfarrak();
 void AddSC_instance_zulfarrak();
+void AddSC_instance_halls_of_origination();
+void AddSC_boss_temple_guardian_anhuur();
+void AddSC_boss_earthrager_ptah();
+void AddSC_boss_anraphet();
+void AddSC_instance_firelands();
+void AddSC_boss_alysrazor();
 
 void AddSC_ashenvale();
 void AddSC_azshara();
 void AddSC_azuremyst_isle();
 void AddSC_bloodmyst_isle();
-void AddSC_boss_azuregos();
 void AddSC_darkshore();
 void AddSC_desolace();
 void AddSC_durotar();
@@ -364,7 +368,6 @@ void AddSC_dustwallow_marsh();
 void AddSC_felwood();
 void AddSC_feralas();
 void AddSC_moonglade();
-void AddSC_mulgore();
 void AddSC_orgrimmar();
 void AddSC_silithus();
 void AddSC_stonetalon_mountains();
@@ -434,7 +437,8 @@ void AddSC_boss_heigan();
 void AddSC_boss_gothik();
 void AddSC_boss_thaddius();
 void AddSC_instance_naxxramas();
-void AddSC_boss_magus_telestra();        //The Nexus Nexus
+void AddSC_boss_nexus_commanders();     // The Nexus Nexus
+void AddSC_boss_magus_telestra();
 void AddSC_boss_anomalus();
 void AddSC_boss_ormorok();
 void AddSC_boss_keristrasza();
@@ -630,6 +634,7 @@ void AddSC_instance_magtheridons_lair();
 void AddSC_boss_grand_warlock_nethekurse();  //HC Shattered Halls
 void AddSC_boss_warbringer_omrogg();
 void AddSC_boss_warchief_kargath_bladefist();
+void AddSC_shattered_halls();
 void AddSC_instance_shattered_halls();
 void AddSC_boss_watchkeeper_gargolmar();     //HC Ramparts
 void AddSC_boss_omor_the_unscarred();
@@ -671,6 +676,15 @@ void AddSC_shattrath_city();
 void AddSC_terokkar_forest();
 void AddSC_zangarmarsh();
 
+// Maelstrom
+void AddSC_kezan();
+void AddSC_instance_stonecore(); // Stonecore
+void AddSC_stonecore();
+void AddSC_boss_corborus();
+void AddSC_boss_slabhide();
+void AddSC_boss_ozruk();
+void AddSC_boss_high_priestess_azil();
+
 // Events
 void AddSC_event_childrens_week();
 
@@ -685,7 +699,6 @@ void AddSC_shaman_pet_scripts();
 // battlegrounds
 
 // outdoor pvp
-void AddSC_outdoorpvp_ep();
 void AddSC_outdoorpvp_hp();
 void AddSC_outdoorpvp_na();
 void AddSC_outdoorpvp_si();
@@ -700,7 +713,6 @@ void AddSC_action_ip_logger();
 
 void AddScripts()
 {
-    AddExampleScripts();
     AddSpellScripts();
     AddSC_SmartScripts();
     AddCommandScripts();
@@ -710,21 +722,13 @@ void AddScripts()
     AddKalimdorScripts();
     AddOutlandScripts();
     AddNorthrendScripts();
+    AddMaelstromScripts();
     AddEventScripts();
     AddPetScripts();
     AddBattlegroundScripts();
     AddOutdoorPvPScripts();
     AddCustomScripts();
 #endif
-}
-
-void AddExampleScripts()
-{
-    AddSC_example_creature();
-    AddSC_example_escort();
-    AddSC_example_gossip_codebox();
-    AddSC_example_misc();
-    AddSC_example_commandscript();
 }
 
 void AddSpellScripts()
@@ -742,7 +746,6 @@ void AddSpellScripts()
     AddSC_warrior_spell_scripts();
     AddSC_quest_spell_scripts();
     AddSC_item_spell_scripts();
-    AddSC_example_spell_scripts();
     AddSC_holiday_spell_scripts();
 }
 
@@ -753,6 +756,7 @@ void AddCommandScripts()
     AddSC_ahbot_commandscript();
     AddSC_arena_commandscript();
     AddSC_ban_commandscript();
+    AddSC_battlenet_account_commandscript();
     AddSC_bf_commandscript();
     AddSC_cast_commandscript();
     AddSC_character_commandscript();
@@ -819,6 +823,17 @@ void AddEasternKingdomsScripts()
     AddSC_boss_drekthar();
     AddSC_boss_galvangar();
     AddSC_boss_vanndar();
+    AddSC_boss_alizabal();                  //Baradin Hold
+    AddSC_boss_occuthar();
+    AddSC_boss_pit_lord_argaloth();
+    AddSC_instance_baradin_hold();
+    AddSC_boss_romogg_bonecrusher();        //Blackrock Caverns
+    AddSC_boss_corla();
+    AddSC_boss_karsh_steelbender();
+    AddSC_boss_beauty();
+    AddSC_boss_ascendant_lord_obsidius();
+    AddSC_blackrock_caverns();
+    AddSC_instance_blackrock_caverns();
     AddSC_blackrock_depths();               //Blackrock Depths
     AddSC_boss_ambassador_flamelash();
     AddSC_boss_anubshiah();
@@ -955,22 +970,18 @@ void AddEasternKingdomsScripts()
     AddSC_boss_hex_lord_malacrass();
     AddSC_boss_janalai();
     AddSC_boss_nalorakk();
-    AddSC_boss_zuljin();
+    AddSC_boss_daakara();
     AddSC_instance_zulaman();
     AddSC_zulaman();
-    AddSC_boss_jeklik();                    //Zul'Gurub
-    AddSC_boss_venoxis();
-    AddSC_boss_marli();
-    AddSC_boss_mandokir();
-    AddSC_boss_gahzranka();
-    AddSC_boss_thekal();
-    AddSC_boss_arlokk();
-    AddSC_boss_jindo();
-    AddSC_boss_hakkar();
-    AddSC_boss_grilek();
+    AddSC_boss_grilek();                    // Zul'Gurub
     AddSC_boss_hazzarah();
+    AddSC_boss_jindo_the_godbreaker();
+    AddSC_boss_kilnara();
+    AddSC_boss_mandokir();
     AddSC_boss_renataki();
+    AddSC_boss_venoxis();
     AddSC_boss_wushoolay();
+    AddSC_boss_zanzil();
     AddSC_instance_zulgurub();
 
     //AddSC_alterac_mountains();
@@ -1072,7 +1083,6 @@ void AddKalimdorScripts()
     AddSC_azshara();
     AddSC_azuremyst_isle();
     AddSC_bloodmyst_isle();
-    AddSC_boss_azuregos();
     AddSC_darkshore();
     AddSC_desolace();
     AddSC_durotar();
@@ -1080,7 +1090,6 @@ void AddKalimdorScripts()
     AddSC_felwood();
     AddSC_feralas();
     AddSC_moonglade();
-    AddSC_mulgore();
     AddSC_orgrimmar();
     AddSC_silithus();
     AddSC_stonetalon_mountains();
@@ -1091,6 +1100,14 @@ void AddKalimdorScripts()
     AddSC_thunder_bluff();
     AddSC_ungoro_crater();
     AddSC_winterspring();
+
+    AddSC_instance_halls_of_origination();
+    AddSC_boss_temple_guardian_anhuur();
+    AddSC_boss_earthrager_ptah();
+    AddSC_boss_anraphet();
+
+    AddSC_instance_firelands();
+    AddSC_boss_alysrazor();
 #endif
 }
 
@@ -1172,6 +1189,7 @@ void AddOutlandScripts()
     AddSC_boss_grand_warlock_nethekurse();  //HC Shattered Halls
     AddSC_boss_warbringer_omrogg();
     AddSC_boss_warchief_kargath_bladefist();
+    AddSC_shattered_halls();
     AddSC_instance_shattered_halls();
     AddSC_boss_watchkeeper_gargolmar();     //HC Ramparts
     AddSC_boss_omor_the_unscarred();
@@ -1274,7 +1292,8 @@ void AddNorthrendScripts()
     AddSC_boss_gothik();
     AddSC_boss_thaddius();
     AddSC_instance_naxxramas();
-    AddSC_boss_magus_telestra();        //The Nexus Nexus
+    AddSC_boss_nexus_commanders();      // The Nexus Nexus
+    AddSC_boss_magus_telestra();
     AddSC_boss_anomalus();
     AddSC_boss_ormorok();
     AddSC_boss_keristrasza();
@@ -1395,6 +1414,20 @@ void AddNorthrendScripts()
 #endif
 }
 
+
+void AddMaelstromScripts()
+{
+#ifdef SCRIPTS
+    AddSC_kezan();
+    AddSC_instance_stonecore(); // Stonecore
+    AddSC_stonecore();
+    AddSC_boss_corborus();
+    AddSC_boss_slabhide();
+    AddSC_boss_ozruk();
+    AddSC_boss_high_priestess_azil();
+#endif
+}
+
 void AddEventScripts()
 {
 #ifdef SCRIPTS
@@ -1417,7 +1450,6 @@ void AddPetScripts()
 void AddOutdoorPvPScripts()
 {
 #ifdef SCRIPTS
-    AddSC_outdoorpvp_ep();
     AddSC_outdoorpvp_hp();
     AddSC_outdoorpvp_na();
     AddSC_outdoorpvp_si();

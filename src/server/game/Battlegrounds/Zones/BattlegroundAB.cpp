@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -17,9 +17,7 @@
  */
 
 #include "BattlegroundAB.h"
-#include "World.h"
 #include "WorldPacket.h"
-#include "ObjectMgr.h"
 #include "BattlegroundMgr.h"
 #include "Creature.h"
 #include "Language.h"
@@ -224,14 +222,14 @@ void BattlegroundAB::StartingEventOpenDoors()
 void BattlegroundAB::AddPlayer(Player* player)
 {
     Battleground::AddPlayer(player);
-    PlayerScores[player->GetGUIDLow()] = new BattlegroundABScore(player->GetGUID());
+    PlayerScores[player->GetGUID()] = new BattlegroundABScore(player->GetGUID(), player->GetBGTeam());
 }
 
-void BattlegroundAB::RemovePlayer(Player* /*player*/, uint64 /*guid*/, uint32 /*team*/)
+void BattlegroundAB::RemovePlayer(Player* /*player*/, ObjectGuid /*guid*/, uint32 /*team*/)
 {
 }
 
-void BattlegroundAB::HandleAreaTrigger(Player* player, uint32 trigger)
+void BattlegroundAB::HandleAreaTrigger(Player* player, uint32 trigger, bool entered)
 {
     if (GetStatus() != STATUS_IN_PROGRESS)
         return;
@@ -240,13 +238,13 @@ void BattlegroundAB::HandleAreaTrigger(Player* player, uint32 trigger)
     {
         case 3948:                                          // Arathi Basin Alliance Exit.
             if (player->GetTeam() != ALLIANCE)
-                player->GetSession()->SendAreaTriggerMessage("Only The Alliance can use that portal");
+                player->GetSession()->SendNotification("Only The Alliance can use that portal");
             else
                 player->LeaveBattleground();
             break;
         case 3949:                                          // Arathi Basin Horde Exit.
             if (player->GetTeam() != HORDE)
-                player->GetSession()->SendAreaTriggerMessage("Only The Horde can use that portal");
+                player->GetSession()->SendNotification("Only The Horde can use that portal");
             else
                 player->LeaveBattleground();
             break;
@@ -260,7 +258,7 @@ void BattlegroundAB::HandleAreaTrigger(Player* player, uint32 trigger)
         case 4674:                                          // Unk3
             //break;
         default:
-            Battleground::HandleAreaTrigger(player, trigger);
+            Battleground::HandleAreaTrigger(player, trigger, entered);
             break;
     }
 }
@@ -311,23 +309,23 @@ int32 BattlegroundAB::_GetNodeNameId(uint8 node)
         case BG_AB_NODE_LUMBER_MILL:return LANG_BG_AB_NODE_LUMBER_MILL;
         case BG_AB_NODE_GOLD_MINE:  return LANG_BG_AB_NODE_GOLD_MINE;
         default:
-            ASSERT(false);
+            ABORT();
     }
     return 0;
 }
 
-void BattlegroundAB::FillInitialWorldStates(WorldPacket& data)
+void BattlegroundAB::FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet)
 {
     const uint8 plusArray[] = {0, 2, 3, 0, 1};
 
     // Node icons
     for (uint8 node = 0; node < BG_AB_DYNAMIC_NODES_COUNT; ++node)
-        data << uint32(BG_AB_OP_NODEICONS[node]) << uint32((m_Nodes[node] == 0)?1:0);
+        packet.Worldstates.emplace_back(uint32(BG_AB_OP_NODEICONS[node]), int32((m_Nodes[node] == 0) ? 1 : 0));
 
     // Node occupied states
     for (uint8 node = 0; node < BG_AB_DYNAMIC_NODES_COUNT; ++node)
         for (uint8 i = 1; i < BG_AB_DYNAMIC_NODES_COUNT; ++i)
-            data << uint32(BG_AB_OP_NODESTATES[node] + plusArray[i]) << uint32((m_Nodes[node] == i)?1:0);
+            packet.Worldstates.emplace_back(uint32(BG_AB_OP_NODESTATES[node] + plusArray[i]), int32((m_Nodes[node] == i) ? 1 : 0));
 
     // How many bases each team owns
     uint8 ally = 0, horde = 0;
@@ -337,17 +335,17 @@ void BattlegroundAB::FillInitialWorldStates(WorldPacket& data)
         else if (m_Nodes[node] == BG_AB_NODE_STATUS_HORDE_OCCUPIED)
             ++horde;
 
-    data << uint32(BG_AB_OP_OCCUPIED_BASES_ALLY)  << uint32(ally);
-    data << uint32(BG_AB_OP_OCCUPIED_BASES_HORDE) << uint32(horde);
+    packet.Worldstates.emplace_back(uint32(BG_AB_OP_OCCUPIED_BASES_ALLY), int32(ally));
+    packet.Worldstates.emplace_back(uint32(BG_AB_OP_OCCUPIED_BASES_HORDE), int32(horde));
 
     // Team scores
-    data << uint32(BG_AB_OP_RESOURCES_MAX)      << uint32(BG_AB_MAX_TEAM_SCORE);
-    data << uint32(BG_AB_OP_RESOURCES_WARNING)  << uint32(BG_AB_WARNING_NEAR_VICTORY_SCORE);
-    data << uint32(BG_AB_OP_RESOURCES_ALLY)     << uint32(m_TeamScores[TEAM_ALLIANCE]);
-    data << uint32(BG_AB_OP_RESOURCES_HORDE)    << uint32(m_TeamScores[TEAM_HORDE]);
+    packet.Worldstates.emplace_back(uint32(BG_AB_OP_RESOURCES_MAX), int32(BG_AB_MAX_TEAM_SCORE));
+    packet.Worldstates.emplace_back(uint32(BG_AB_OP_RESOURCES_WARNING), int32(BG_AB_WARNING_NEAR_VICTORY_SCORE));
+    packet.Worldstates.emplace_back(uint32(BG_AB_OP_RESOURCES_ALLY), int32(m_TeamScores[TEAM_ALLIANCE]));
+    packet.Worldstates.emplace_back(uint32(BG_AB_OP_RESOURCES_HORDE), int32(m_TeamScores[TEAM_HORDE]));
 
     // other unknown
-    data << uint32(0x745) << uint32(0x2);           // 37 1861 unk
+    packet.Worldstates.emplace_back(uint32(0x745), 0x2);
 }
 
 void BattlegroundAB::_SendNodeUpdate(uint8 node)
@@ -392,7 +390,7 @@ void BattlegroundAB::_NodeOccupied(uint8 node, Team team)
     if (capturedNodes >= 4)
         CastSpellOnTeam(SPELL_AB_QUEST_REWARD_4_BASES, team);
 
-    Creature* trigger = BgCreatures[node+7] ? GetBGCreature(node+7) : NULL; // 0-6 spirit guides
+    Creature* trigger = !BgCreatures[node + 7] ? GetBGCreature(node + 7) : NULL; // 0-6 spirit guides
     if (!trigger)
         trigger = AddCreature(WORLD_TRIGGER, node+7, BG_AB_NodePositions[node], GetTeamIndexByTeamId(team));
 
@@ -635,7 +633,7 @@ void BattlegroundAB::Reset()
     }
 
     for (uint8 i = 0; i < BG_AB_ALL_NODES_COUNT + 5; ++i)//+5 for aura triggers
-        if (BgCreatures[i])
+        if (!BgCreatures[i].IsEmpty())
             DelCreature(i);
 }
 
@@ -676,7 +674,7 @@ WorldSafeLocsEntry const* BattlegroundAB::GetClosestGraveYard(Player* player)
             WorldSafeLocsEntry const*entry = sWorldSafeLocsStore.LookupEntry(BG_AB_GraveyardIds[nodes[i]]);
             if (!entry)
                 continue;
-            float dist = (entry->x - plr_x)*(entry->x - plr_x)+(entry->y - plr_y)*(entry->y - plr_y);
+            float dist = (entry->Loc.X - plr_x)*(entry->Loc.X - plr_x)+(entry->Loc.Y - plr_y)*(entry->Loc.Y - plr_y);
             if (mindist > dist)
             {
                 mindist = dist;

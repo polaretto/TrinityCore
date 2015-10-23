@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -78,7 +78,7 @@ enum TrinityStrings
     LANG_UNKNOWN                        = 45,
     LANG_ERROR                          = 46,
     LANG_NON_EXIST_CHARACTER            = 47,
-    LANG_FRIEND_IGNORE_UNKNOWN          = 48,
+    // unused                           = 48,
     LANG_LEVEL_MINREQUIRED              = 49,
     LANG_LEVEL_MINREQUIRED_AND_ITEM     = 50,
     LANG_NPC_TAINER_HELLO               = 51,
@@ -110,7 +110,9 @@ enum TrinityStrings
     LANG_RBAC_PERM_DENIED               = 77,
     LANG_RBAC_PERM_REVOKED              = 78,
     LANG_RBAC_PERM_REVOKED_NOT_IN_LIST  = 79,
-    // Free 80 - 95
+    LANG_PVPSTATS                       = 80,
+    LANG_PVPSTATS_DISABLED              = 81,
+    // Free 82 - 95
 
 
     LANG_GUILD_RENAME_ALREADY_EXISTS    = 96,
@@ -205,7 +207,17 @@ enum TrinityStrings
     LANG_LIQUID_STATUS                  = 175,
     LANG_INVALID_GAMEOBJECT_TYPE        = 176,
     LANG_GAMEOBJECT_DAMAGED             = 177,
-    // Room for more level 1              178-199 not used
+
+    LANG_PHASING_SUCCESS                = 178,
+    LANG_PHASING_FAILED                 = 179,
+    LANG_PHASING_LAST_PHASE             = 180,
+    LANG_PHASING_LIST                   = 181,
+    LANG_PHASING_PHASEMASK              = 182,
+    LANG_PHASING_REPORT_STATUS          = 183,
+    LANG_PHASING_NO_DEFINITIONS         = 184,              // Phasing
+
+    LANG_GRID_POSITION                  = 185,
+    // Room for more level 1              186-199 not used
 
     // level 2 chat
     LANG_NO_SELECTION                   = 200,
@@ -728,12 +740,12 @@ enum TrinityStrings
     LANG_DEBUG_ARENA_OFF                = 738,
     LANG_DEBUG_BG_ON                    = 739,
     LANG_DEBUG_BG_OFF                   = 740,
-    LANG_DIST_ARENA_POINTS_START        = 741,
-    LANG_DIST_ARENA_POINTS_ONLINE_START = 742,
-    LANG_DIST_ARENA_POINTS_ONLINE_END   = 743,
-    LANG_DIST_ARENA_POINTS_TEAM_START   = 744,
-    LANG_DIST_ARENA_POINTS_TEAM_END     = 745,
-    LANG_DIST_ARENA_POINTS_END          = 746,
+//  LANG_DIST_ARENA_POINTS_START        = 741,
+//  LANG_DIST_ARENA_POINTS_ONLINE_START = 742,
+//  LANG_DIST_ARENA_POINTS_ONLINE_END   = 743,
+//  LANG_DIST_ARENA_POINTS_TEAM_START   = 744,
+//  LANG_DIST_ARENA_POINTS_TEAM_END     = 745,
+//  LANG_DIST_ARENA_POINTS_END          = 746,
     LANG_BG_DISABLED                    = 747,
     LANG_ARENA_DISABLED                 = 748,
 //                                      = 749, see LANG_PINFO_ACC_OS
@@ -881,7 +893,8 @@ enum TrinityStrings
     LANG_CHARACTER_DELETED_LIST_LINE_CHAT = 1026,
     LANG_SQLDRIVER_QUERY_LOGGING_ENABLED  = 1027,
     LANG_SQLDRIVER_QUERY_LOGGING_DISABLED = 1028,
-    // Room for more level 4              1029-1099 not used
+    LANG_ACCOUNT_INVALID_BNET_NAME      = 1029,
+    // Room for more level 4              1030-1099 not used
 
     // Level 3 (continue)
     LANG_ACCOUNT_SETADDON               = 1100,
@@ -968,15 +981,22 @@ enum TrinityStrings
     LANG_GUILD_INFO_BANK_GOLD           = 1181,
     LANG_GUILD_INFO_MOTD                = 1182,
     LANG_GUILD_INFO_EXTRA_INFO          = 1183,
-    // Room for more level 3              1184-1199 not used
+    LANG_GUILD_INFO_LEVEL               = 1184,
+    LANG_ACCOUNT_BNET_LINKED            = 1185,
+    LANG_ACCOUNT_OR_BNET_DOES_NOT_EXIST = 1186,
+    LANG_ACCOUNT_ALREADY_LINKED         = 1187,
+    LANG_ACCOUNT_BNET_UNLINKED          = 1188,
+    LANG_ACCOUNT_BNET_NOT_LINKED        = 1189,
+    LANG_DISALLOW_TICKETS_CONFIG        = 1190,
+    // Room for more level 3              1191-1198 not used
 
     // Debug commands
+    LANG_DEBUG_AREATRIGGER_LEFT         = 1999,
     LANG_CINEMATIC_NOT_EXIST            = 1200,
     LANG_MOVIE_NOT_EXIST                = 1201,
     LANG_DEBUG_AREATRIGGER_ON           = 1202,
     LANG_DEBUG_AREATRIGGER_OFF          = 1203,
-    LANG_DEBUG_AREATRIGGER_REACHED      = 1204,
-    // Room for more debug                1205-1299 not used
+    LANG_DEBUG_AREATRIGGER_ENTERED      = 1204,
 
     // Isle of Conquest
     LANG_BG_IC_START_TWO_MINUTES        = 1205,
@@ -1012,20 +1032,15 @@ enum TrinityStrings
     LANG_BG_AV_H_NEAR_LOSE              = 1330,
     //                                    1331-1332
     LANG_BG_AV_START_TWO_MINUTES        = 1333,
-    // FREE IDS                           1334-1999
+    // FREE IDS                           1334-2002
 
-    // Ticket Strings 2000-2030
-    LANG_COMMAND_TICKETNEW              = 2000,
-    LANG_COMMAND_TICKETUPDATED          = 2001,
-    LANG_COMMAND_TICKETPLAYERABANDON    = 2002,
+    // Ticket Strings 2003-2028
     LANG_COMMAND_TICKETCLOSED           = 2003,
     LANG_COMMAND_TICKETDELETED          = 2004,
     LANG_COMMAND_TICKETNOTEXIST         = 2005,
     LANG_COMMAND_TICKETCLOSEFIRST       = 2006,
     LANG_COMMAND_TICKETALREADYASSIGNED  = 2007,
-    LANG_COMMAND_TICKETRELOAD           = 2008,
     LANG_COMMAND_TICKETSHOWLIST         = 2009,
-    LANG_COMMAND_TICKETSHOWONLINELIST   = 2010,
     LANG_COMMAND_TICKETSHOWCLOSEDLIST   = 2011,
     LANG_COMMAND_TICKETASSIGNERROR_A    = 2012,
     LANG_COMMAND_TICKETASSIGNERROR_B    = 2013,
@@ -1034,18 +1049,14 @@ enum TrinityStrings
     LANG_COMMAND_TICKETCANNOTCLOSE      = 2016,
     LANG_COMMAND_TICKETLISTGUID         = 2017,
     LANG_COMMAND_TICKETLISTNAME         = 2018,
-    LANG_COMMAND_TICKETLISTAGE          = 2019,
     LANG_COMMAND_TICKETLISTASSIGNEDTO   = 2020,
     LANG_COMMAND_TICKETLISTUNASSIGNED   = 2021,
     LANG_COMMAND_TICKETLISTMESSAGE      = 2022,
     LANG_COMMAND_TICKETLISTCOMMENT      = 2023,
     LANG_COMMAND_TICKETLISTADDCOMMENT   = 2024,
     LANG_COMMAND_TICKETLISTAGECREATE    = 2025,
-    LANG_COMMAND_TICKETSHOWESCALATEDLIST = 2026,
     LANG_COMMAND_TICKETPENDING          = 2027,
     LANG_COMMAND_TICKETRESET            = 2028,
-    LANG_COMMAND_TICKETLISTRESPONSE     = 2029,
-    LANG_COMMAND_TICKETCOMPLETED        = 2030,
 
     // Trinity strings                    5000-9999
     LANG_COMMAND_FREEZE                 = 5000,
@@ -1108,8 +1119,15 @@ enum TrinityStrings
     LANG_COMMAND_INST_STAT_GROUPSBOUND  = 5054,
     LANG_NOT_DUNGEON                    = 5055, // Map is not a dungeon.
     LANG_NO_INSTANCE_DATA               = 5056, // Map has no instance data.
+    LANG_COMMAND_INST_SET_BOSS_STATE    = 5057,
+    LANG_COMMAND_INST_GET_BOSS_STATE    = 5058,
 
-    // Room for more Trinity strings      5057-9999
+    // Mutehistory commands
+    LANG_COMMAND_MUTEHISTORY            = 5059,
+    LANG_COMMAND_MUTEHISTORY_EMPTY      = 5060,
+    LANG_COMMAND_MUTEHISTORY_OUTPUT     = 5061,
+
+    // Room for more Trinity strings      5062-9999
 
     // Level requirement notifications
     LANG_SAY_REQ                        = 6604,
@@ -1192,8 +1210,5 @@ enum TrinityStrings
 
     LANG_NPCINFO_INHABIT_TYPE                     = 11008,
     LANG_NPCINFO_FLAGS_EXTRA                      = 11009
-
-    // NOT RESERVED IDS                   12000-1999999999
-    // For other tables maybe             2000010000-2147483647 (max index)
 };
 #endif

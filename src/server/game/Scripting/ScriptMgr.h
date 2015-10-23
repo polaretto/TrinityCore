@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,8 +19,8 @@
 #ifndef SC_SCRIPTMGR_H
 #define SC_SCRIPTMGR_H
 
-#include <atomic>
 #include "Common.h"
+#include <atomic>
 #include "DBCStores.h"
 #include "QuestDef.h"
 #include "SharedDefines.h"
@@ -61,7 +61,6 @@ class WorldSocket;
 class WorldObject;
 class WorldSession;
 
-struct AchievementCriteriaData;
 struct AuctionEntry;
 struct ConditionSourceInfo;
 struct Condition;
@@ -295,7 +294,7 @@ class FormulaScript : public ScriptObject
         virtual void OnZeroDifferenceCalculation(uint8& /*diff*/, uint8 /*playerLevel*/) { }
 
         // Called after calculating base experience gain.
-        virtual void OnBaseGainCalculation(uint32& /*gain*/, uint8 /*playerLevel*/, uint8 /*mobLevel*/, ContentLevels /*content*/) { }
+        virtual void OnBaseGainCalculation(uint32& /*gain*/, uint8 /*playerLevel*/, uint8 /*mobLevel*/) { }
 
         // Called after calculating experience gain.
         virtual void OnGainCalculation(uint32& /*gain*/, Player* /*player*/, Unit* /*unit*/) { }
@@ -514,7 +513,7 @@ class AreaTriggerScript : public ScriptObject
         bool IsDatabaseBound() const final override { return true; }
 
         // Called when the area trigger is activated by a player.
-        virtual bool OnTrigger(Player* /*player*/, AreaTriggerEntry const* /*trigger*/) { return false; }
+        virtual bool OnTrigger(Player* /*player*/, AreaTriggerEntry const* /*trigger*/, bool /*entered*/) { return false; }
 };
 
 class BattlegroundScript : public ScriptObject
@@ -554,7 +553,7 @@ class CommandScript : public ScriptObject
     public:
 
         // Should return a pointer to a valid command table (ChatCommand array) to be used by ChatHandler.
-        virtual ChatCommand* GetCommands() const = 0;
+        virtual std::vector<ChatCommand> GetCommands() const = 0;
 };
 
 class WeatherScript : public ScriptObject, public UpdatableScript<Weather>
@@ -704,10 +703,10 @@ class PlayerScript : public UnitScript
         virtual void OnTalentsReset(Player* /*player*/, bool /*noCost*/) { }
 
         // Called when a player's money is modified (before the modification is done)
-        virtual void OnMoneyChanged(Player* /*player*/, int32& /*amount*/) { }
+        virtual void OnMoneyChanged(Player* /*player*/, int64& /*amount*/) { }
 
         // Called when a player's money is at limit (amount = money tried to add)
-        virtual void OnMoneyLimit(Player* /*player*/, int32 /*amount*/) { }
+        virtual void OnMoneyLimit(Player* /*player*/, int64 /*amount*/) { }
 
         // Called when a player gains XP (before anything is given)
         virtual void OnGiveXP(Player* /*player*/, uint32& /*amount*/, Unit* /*victim*/) { }
@@ -736,9 +735,9 @@ class PlayerScript : public UnitScript
         virtual void OnChat(Player* /*player*/, uint32 /*type*/, uint32 /*lang*/, std::string& /*msg*/, Channel* /*channel*/) { }
 
         // Both of the below are called on emote opcodes.
-        virtual void OnEmote(Player* /*player*/, uint32 /*emote*/) { }
+        virtual void OnClearEmote(Player* /*player*/) { }
 
-        virtual void OnTextEmote(Player* /*player*/, uint32 /*textEmote*/, uint32 /*emoteNum*/, uint64 /*guid*/) { }
+        virtual void OnTextEmote(Player* /*player*/, uint32 /*textEmote*/, uint32 /*emoteNum*/, ObjectGuid /*guid*/) { }
 
         // Called in Spell::Cast.
         virtual void OnSpellCast(Player* /*player*/, Spell* /*spell*/, bool /*skipCheck*/) { }
@@ -753,10 +752,10 @@ class PlayerScript : public UnitScript
         virtual void OnCreate(Player* /*player*/) { }
 
         // Called when a player is deleted.
-        virtual void OnDelete(uint64 /*guid*/, uint32 /*accountId*/) { }
+        virtual void OnDelete(ObjectGuid /*guid*/, uint32 /*accountId*/) { }
 
         // Called when a player delete failed
-        virtual void OnFailedDelete(uint64 /*guid*/, uint32 /*accountId*/) { }
+        virtual void OnFailedDelete(ObjectGuid /*guid*/, uint32 /*accountId*/) { }
 
         // Called when a player is about to be saved.
         virtual void OnSave(Player* /*player*/) { }
@@ -815,7 +814,7 @@ class GuildScript : public ScriptObject
         virtual void OnAddMember(Guild* /*guild*/, Player* /*player*/, uint8& /*plRank*/) { }
 
         // Called when a member is removed from the guild.
-        virtual void OnRemoveMember(Guild* /*guild*/, Player* /*player*/, bool /*isDisbanding*/, bool /*isKicked*/) { }
+        virtual void OnRemoveMember(Guild* /*guild*/, ObjectGuid /*guid*/, bool /*isDisbanding*/, bool /*isKicked*/) { }
 
         // Called when the guild MOTD (message of the day) changes.
         virtual void OnMOTDChanged(Guild* /*guild*/, const std::string& /*newMotd*/) { }
@@ -830,18 +829,18 @@ class GuildScript : public ScriptObject
         virtual void OnDisband(Guild* /*guild*/) { }
 
         // Called when a guild member withdraws money from a guild bank.
-        virtual void OnMemberWitdrawMoney(Guild* /*guild*/, Player* /*player*/, uint32& /*amount*/, bool /*isRepair*/) { }
+        virtual void OnMemberWitdrawMoney(Guild* /*guild*/, Player* /*player*/, uint64& /*amount*/, bool /*isRepair*/) { }
 
         // Called when a guild member deposits money in a guild bank.
-        virtual void OnMemberDepositMoney(Guild* /*guild*/, Player* /*player*/, uint32& /*amount*/) { }
+        virtual void OnMemberDepositMoney(Guild* /*guild*/, Player* /*player*/, uint64& /*amount*/) { }
 
         // Called when a guild member moves an item in a guild bank.
         virtual void OnItemMove(Guild* /*guild*/, Player* /*player*/, Item* /*pItem*/, bool /*isSrcBank*/, uint8 /*srcContainer*/, uint8 /*srcSlotId*/,
             bool /*isDestBank*/, uint8 /*destContainer*/, uint8 /*destSlotId*/) { }
 
-        virtual void OnEvent(Guild* /*guild*/, uint8 /*eventType*/, uint32 /*playerGuid1*/, uint32 /*playerGuid2*/, uint8 /*newRank*/) { }
+        virtual void OnEvent(Guild* /*guild*/, uint8 /*eventType*/, ObjectGuid::LowType /*playerGuid1*/, ObjectGuid::LowType /*playerGuid2*/, uint8 /*newRank*/) { }
 
-        virtual void OnBankEvent(Guild* /*guild*/, uint8 /*eventType*/, uint8 /*tabId*/, uint32 /*playerGuid*/, uint32 /*itemOrMoney*/, uint16 /*itemStackCount*/, uint8 /*destTabId*/) { }
+        virtual void OnBankEvent(Guild* /*guild*/, uint8 /*eventType*/, uint8 /*tabId*/, ObjectGuid::LowType /*playerGuid*/, uint64 /*itemOrMoney*/, uint16 /*itemStackCount*/, uint8 /*destTabId*/) { }
 };
 
 class GroupScript : public ScriptObject
@@ -855,16 +854,16 @@ class GroupScript : public ScriptObject
         bool IsDatabaseBound() const final override { return false; }
 
         // Called when a member is added to a group.
-        virtual void OnAddMember(Group* /*group*/, uint64 /*guid*/) { }
+        virtual void OnAddMember(Group* /*group*/, ObjectGuid /*guid*/) { }
 
         // Called when a member is invited to join a group.
-        virtual void OnInviteMember(Group* /*group*/, uint64 /*guid*/) { }
+        virtual void OnInviteMember(Group* /*group*/, ObjectGuid /*guid*/) { }
 
         // Called when a member is removed from a group.
-        virtual void OnRemoveMember(Group* /*group*/, uint64 /*guid*/, RemoveMethod /*method*/, uint64 /*kicker*/, const char* /*reason*/) { }
+        virtual void OnRemoveMember(Group* /*group*/, ObjectGuid /*guid*/, RemoveMethod /*method*/, ObjectGuid /*kicker*/, const char* /*reason*/) { }
 
         // Called when the leader of a group is changed.
-        virtual void OnChangeLeader(Group* /*group*/, uint64 /*newLeaderGuid*/, uint64 /*oldLeaderGuid*/) { }
+        virtual void OnChangeLeader(Group* /*group*/, ObjectGuid /*newLeaderGuid*/, ObjectGuid /*oldLeaderGuid*/) { }
 
         // Called when a group is disbanded.
         virtual void OnDisband(Group* /*group*/) { }
@@ -872,6 +871,15 @@ class GroupScript : public ScriptObject
 
 // Placed here due to ScriptRegistry::AddScript dependency.
 #define sScriptMgr ScriptMgr::instance()
+
+// namespace
+// {
+    typedef std::vector<ScriptObject*> UnusedScriptContainer;
+    typedef std::list<std::string> UnusedScriptNamesContainer;
+
+    extern UnusedScriptContainer UnusedScripts;
+    extern UnusedScriptNamesContainer UnusedScriptNames;
+// }
 
 // Manages registration, loading, and execution of scripts.
 class ScriptMgr
@@ -901,6 +909,7 @@ class ScriptMgr
     public: /* Unloading */
 
         void Unload();
+        void UnloadUnusedScripts();
 
     public: /* SpellScriptLoader */
 
@@ -935,7 +944,7 @@ class ScriptMgr
         void OnGrayLevelCalculation(uint8& grayLevel, uint8 playerLevel);
         void OnColorCodeCalculation(XPColorChar& color, uint8 playerLevel, uint8 mobLevel);
         void OnZeroDifferenceCalculation(uint8& diff, uint8 playerLevel);
-        void OnBaseGainCalculation(uint32& gain, uint8 playerLevel, uint8 mobLevel, ContentLevels content);
+        void OnBaseGainCalculation(uint32& gain, uint8 playerLevel, uint8 mobLevel);
         void OnGainCalculation(uint32& gain, Player* player, Unit* unit);
         void OnGroupRateCalculation(float& rate, uint32 count, bool isRaid);
 
@@ -992,7 +1001,7 @@ class ScriptMgr
 
     public: /* AreaTriggerScript */
 
-        bool OnAreaTrigger(Player* player, AreaTriggerEntry const* trigger);
+        bool OnAreaTrigger(Player* player, AreaTriggerEntry const* trigger, bool entered);
 
     public: /* BattlegroundScript */
 
@@ -1004,7 +1013,7 @@ class ScriptMgr
 
     public: /* CommandScript */
 
-        std::vector<ChatCommand*> GetChatCommands();
+        std::vector<ChatCommand> GetChatCommands();
 
     public: /* WeatherScript */
 
@@ -1055,8 +1064,8 @@ class ScriptMgr
         void OnPlayerLevelChanged(Player* player, uint8 oldLevel);
         void OnPlayerFreeTalentPointsChanged(Player* player, uint32 newPoints);
         void OnPlayerTalentsReset(Player* player, bool noCost);
-        void OnPlayerMoneyChanged(Player* player, int32& amount);
-        void OnPlayerMoneyLimit(Player* player, int32 amount);
+        void OnPlayerMoneyChanged(Player* player, int64& amount);
+        void OnPlayerMoneyLimit(Player* player, int64 amount);
         void OnGivePlayerXP(Player* player, uint32& amount, Unit* victim);
         void OnPlayerReputationChange(Player* player, uint32 factionID, int32& standing, bool incremental);
         void OnPlayerDuelRequest(Player* target, Player* challenger);
@@ -1067,14 +1076,14 @@ class ScriptMgr
         void OnPlayerChat(Player* player, uint32 type, uint32 lang, std::string& msg, Group* group);
         void OnPlayerChat(Player* player, uint32 type, uint32 lang, std::string& msg, Guild* guild);
         void OnPlayerChat(Player* player, uint32 type, uint32 lang, std::string& msg, Channel* channel);
-        void OnPlayerEmote(Player* player, uint32 emote);
-        void OnPlayerTextEmote(Player* player, uint32 textEmote, uint32 emoteNum, uint64 guid);
+        void OnPlayerClearEmote(Player* player);
+        void OnPlayerTextEmote(Player* player, uint32 textEmote, uint32 emoteNum, ObjectGuid guid);
         void OnPlayerSpellCast(Player* player, Spell* spell, bool skipCheck);
         void OnPlayerLogin(Player* player, bool firstLogin);
         void OnPlayerLogout(Player* player);
         void OnPlayerCreate(Player* player);
-        void OnPlayerDelete(uint64 guid, uint32 accountId);
-        void OnPlayerFailedDelete(uint64 guid, uint32 accountId);
+        void OnPlayerDelete(ObjectGuid guid, uint32 accountId);
+        void OnPlayerFailedDelete(ObjectGuid guid, uint32 accountId);
         void OnPlayerSave(Player* player);
         void OnPlayerBindToInstance(Player* player, Difficulty difficulty, uint32 mapid, bool permanent);
         void OnPlayerUpdateZone(Player* player, uint32 newZone, uint32 newArea);
@@ -1092,24 +1101,24 @@ class ScriptMgr
     public: /* GuildScript */
 
         void OnGuildAddMember(Guild* guild, Player* player, uint8& plRank);
-        void OnGuildRemoveMember(Guild* guild, Player* player, bool isDisbanding, bool isKicked);
+        void OnGuildRemoveMember(Guild* guild, ObjectGuid guid, bool isDisbanding, bool isKicked);
         void OnGuildMOTDChanged(Guild* guild, const std::string& newMotd);
         void OnGuildInfoChanged(Guild* guild, const std::string& newInfo);
         void OnGuildCreate(Guild* guild, Player* leader, const std::string& name);
         void OnGuildDisband(Guild* guild);
-        void OnGuildMemberWitdrawMoney(Guild* guild, Player* player, uint32 &amount, bool isRepair);
-        void OnGuildMemberDepositMoney(Guild* guild, Player* player, uint32 &amount);
+        void OnGuildMemberWitdrawMoney(Guild* guild, Player* player, uint64 &amount, bool isRepair);
+        void OnGuildMemberDepositMoney(Guild* guild, Player* player, uint64 &amount);
         void OnGuildItemMove(Guild* guild, Player* player, Item* pItem, bool isSrcBank, uint8 srcContainer, uint8 srcSlotId,
             bool isDestBank, uint8 destContainer, uint8 destSlotId);
-        void OnGuildEvent(Guild* guild, uint8 eventType, uint32 playerGuid1, uint32 playerGuid2, uint8 newRank);
-        void OnGuildBankEvent(Guild* guild, uint8 eventType, uint8 tabId, uint32 playerGuid, uint32 itemOrMoney, uint16 itemStackCount, uint8 destTabId);
+        void OnGuildEvent(Guild* guild, uint8 eventType, ObjectGuid::LowType playerGuid1, ObjectGuid::LowType playerGuid2, uint8 newRank);
+        void OnGuildBankEvent(Guild* guild, uint8 eventType, uint8 tabId, ObjectGuid::LowType playerGuid, uint64 itemOrMoney, uint16 itemStackCount, uint8 destTabId);
 
     public: /* GroupScript */
 
-        void OnGroupAddMember(Group* group, uint64 guid);
-        void OnGroupInviteMember(Group* group, uint64 guid);
-        void OnGroupRemoveMember(Group* group, uint64 guid, RemoveMethod method, uint64 kicker, const char* reason);
-        void OnGroupChangeLeader(Group* group, uint64 newLeaderGuid, uint64 oldLeaderGuid);
+        void OnGroupAddMember(Group* group, ObjectGuid guid);
+        void OnGroupInviteMember(Group* group, ObjectGuid guid);
+        void OnGroupRemoveMember(Group* group, ObjectGuid guid, RemoveMethod method, ObjectGuid kicker, const char* reason);
+        void OnGroupChangeLeader(Group* group, ObjectGuid newLeaderGuid, ObjectGuid oldLeaderGuid);
         void OnGroupDisband(Group* group);
 
     public: /* UnitScript */
@@ -1122,9 +1131,9 @@ class ScriptMgr
 
     public: /* Scheduled scripts */
 
-        uint32 IncreaseScheduledScriptsCount() { return ++_scheduledScripts; }
-        uint32 DecreaseScheduledScriptCount() { return --_scheduledScripts; }
-        uint32 DecreaseScheduledScriptCount(size_t count) { return _scheduledScripts -= count; }
+        uint64 IncreaseScheduledScriptsCount() { return ++_scheduledScripts; }
+        uint64 DecreaseScheduledScriptCount() { return --_scheduledScripts; }
+        uint64 DecreaseScheduledScriptCount(uint64 count) { return _scheduledScripts -= count; }
         bool IsScriptScheduled() const { return _scheduledScripts > 0; }
 
     private:
@@ -1132,7 +1141,7 @@ class ScriptMgr
         uint32 _scriptCount;
 
         //atomic op counter for active scripts amount
-        std::atomic_long _scheduledScripts;
+        std::atomic<uint64> _scheduledScripts;
 };
 
 #endif

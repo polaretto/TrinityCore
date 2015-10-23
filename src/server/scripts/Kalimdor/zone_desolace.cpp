@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,14 +19,12 @@
 /* ScriptData
 SDName: Desolace
 SD%Complete: 100
-SDComment: Quest support: 5561
+SDComment: Quest support: 5561, 5581
 SDCategory: Desolace
 EndScriptData */
 
 /* ContentData
 npc_aged_dying_ancient_kodo
-go_iruxos
-npc_dalinda_malem
 go_demon_portal
 EndContentData */
 
@@ -65,8 +63,7 @@ public:
     {
         npc_aged_dying_ancient_kodoAI(Creature* creature) : ScriptedAI(creature) { }
 
-        void MoveInLineOfSight(Unit* who) override
-
+        void MoveInLineOfSight(Unit* who)
         {
             if (who->GetEntry() == NPC_SMEED && me->IsWithinDistInMap(who, 10.0f) && !me->HasAura(SPELL_KODO_KOMBO_GOSSIP))
             {
@@ -77,7 +74,7 @@ public:
             }
         }
 
-        void SpellHit(Unit* caster, SpellInfo const* spell) override
+        void SpellHit(Unit* caster, SpellInfo const* spell)
         {
             if (spell->Id == SPELL_KODO_KOMBO_ITEM)
             {
@@ -88,12 +85,20 @@ public:
                     DoCast(me, SPELL_KODO_KOMBO_DESPAWN_BUFF, true);
 
                     me->UpdateEntry(NPC_TAMED_KODO);
+                    me->CombatStop();
+                    me->DeleteThreatList();
+                    me->SetSpeed(MOVE_RUN, 0.6f, true);
                     me->GetMotionMaster()->MoveFollow(caster, PET_FOLLOW_DIST, me->GetFollowAngle());
+                    me->setActive(true);
                 }
             }
             else if (spell->Id == SPELL_KODO_KOMBO_GOSSIP)
             {
                 me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                me->SetHomePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation());
+                me->GetMotionMaster()->Clear();
+                me->GetMotionMaster()->MoveIdle();
+                me->setActive(false);
                 me->DespawnOrUnsummon(60000);
             }
         }
@@ -103,7 +108,7 @@ public:
     {
         if (player->HasAura(SPELL_KODO_KOMBO_PLAYER_BUFF) && creature->HasAura(SPELL_KODO_KOMBO_DESPAWN_BUFF))
         {
-            player->TalkedToCreature(creature->GetEntry(), 0);
+            player->TalkedToCreature(creature->GetEntry(), ObjectGuid::Empty);
             player->RemoveAurasDueToSpell(SPELL_KODO_KOMBO_PLAYER_BUFF);
         }
 
@@ -116,106 +121,6 @@ public:
         return new npc_aged_dying_ancient_kodoAI(creature);
     }
 
-};
-
-/*######
-## go_iruxos
-## Hand of Iruxos
-######*/
-
-enum Iruxos
-{
-    QUEST_HAND_IRUXOS   = 5381,
-    NPC_DEMON_SPIRIT    = 11876
-};
-
-class go_iruxos : public GameObjectScript
-{
-    public:
-        go_iruxos() : GameObjectScript("go_iruxos") { }
-
-        bool OnGossipHello(Player* player, GameObject* go) override
-        {
-            if (player->GetQuestStatus(QUEST_HAND_IRUXOS) == QUEST_STATUS_INCOMPLETE && !go->FindNearestCreature(NPC_DEMON_SPIRIT, 25.0f, true))
-                player->SummonCreature(NPC_DEMON_SPIRIT, go->GetPositionX(), go->GetPositionY(), go->GetPositionZ(), 0.0f, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 10000);
-
-            return true;
-        }
-};
-
-/*######
-## npc_dalinda_malem. Quest 1440
-######*/
-
-enum Dalinda
-{
-    QUEST_RETURN_TO_VAHLARRIEL      = 1440
-};
-
-class npc_dalinda : public CreatureScript
-{
-public:
-    npc_dalinda() : CreatureScript("npc_dalinda") { }
-
-    struct npc_dalindaAI : public npc_escortAI
-    {
-        npc_dalindaAI(Creature* creature) : npc_escortAI(creature) { }
-
-        void Reset() override { }
-
-        void EnterCombat(Unit* /*who*/) override { }
-
-        void JustDied(Unit* /*killer*/) override
-        {
-            if (Player* player = GetPlayerForEscort())
-                player->FailQuest(QUEST_RETURN_TO_VAHLARRIEL);
-            return;
-        }
-
-        void WaypointReached(uint32 waypointId) override
-        {
-            Player* player = GetPlayerForEscort();
-
-            switch (waypointId)
-            {
-                case 1:
-                    me->SetStandState(UNIT_STAND_STATE_STAND);
-                    break;
-                case 15:
-                    if (player)
-                        player->GroupEventHappens(QUEST_RETURN_TO_VAHLARRIEL, me);
-                    break;
-            }
-        }
-
-        void UpdateAI(uint32 diff) override
-        {
-            npc_escortAI::UpdateAI(diff);
-
-            if (!UpdateVictim())
-                return;
-
-            DoMeleeAttackIfReady();
-        }
-    };
-
-    bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest) override
-    {
-        if (quest->GetQuestId() == QUEST_RETURN_TO_VAHLARRIEL)
-       {
-            if (npc_escortAI* escortAI = CAST_AI(npc_dalinda::npc_dalindaAI, creature->AI()))
-            {
-                escortAI->Start(true, false, player->GetGUID());
-                creature->setFaction(113);
-            }
-        }
-        return true;
-    }
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_dalindaAI(creature);
-    }
 };
 
 /*######
@@ -233,7 +138,7 @@ class go_demon_portal : public GameObjectScript
     public:
         go_demon_portal() : GameObjectScript("go_demon_portal") { }
 
-        bool OnGossipHello(Player* player, GameObject* go) override
+        bool OnGossipHello(Player* player, GameObject* go)
         {
             if (player->GetQuestStatus(QUEST_PORTAL_OF_THE_LEGION) == QUEST_STATUS_INCOMPLETE && !go->FindNearestCreature(NPC_DEMON_GUARDIAN, 5.0f, true))
             {
@@ -248,7 +153,5 @@ class go_demon_portal : public GameObjectScript
 void AddSC_desolace()
 {
     new npc_aged_dying_ancient_kodo();
-    new go_iruxos();
-    new npc_dalinda();
     new go_demon_portal();
 }

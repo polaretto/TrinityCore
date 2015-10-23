@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -238,16 +238,17 @@ class spell_ahn_kahet_swarm : public SpellScriptLoader
         {
             PrepareSpellScript(spell_ahn_kahet_swarm_SpellScript);
 
+        public:
+            spell_ahn_kahet_swarm_SpellScript()
+            {
+                _targetCount = 0;
+            }
+
+        private:
             bool Validate(SpellInfo const* /*spellInfo*/) override
             {
                 if (!sSpellMgr->GetSpellInfo(SPELL_SWARM_BUFF))
                     return false;
-                return true;
-            }
-
-            bool Load() override
-            {
-                _targetCount = 0;
                 return true;
             }
 
@@ -278,7 +279,6 @@ class spell_ahn_kahet_swarm : public SpellScriptLoader
                 OnEffectHit += SpellEffectFn(spell_ahn_kahet_swarm_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
             }
 
-        private:
             uint32 _targetCount;
         };
 

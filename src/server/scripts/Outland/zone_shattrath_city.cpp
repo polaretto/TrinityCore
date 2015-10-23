@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -87,15 +87,19 @@ public:
     {
         npc_raliq_the_drunkAI(Creature* creature) : ScriptedAI(creature)
         {
-            m_uiNormFaction = creature->getFaction();
+            Initialize();
         }
 
-        uint32 m_uiNormFaction;
+        void Initialize()
+        {
+            Uppercut_Timer = 5000;
+        }
+
         uint32 Uppercut_Timer;
 
         void Reset() override
         {
-            Uppercut_Timer = 5000;
+            Initialize();
             me->RestoreFaction();
         }
 
@@ -161,13 +165,21 @@ public:
 
     struct npc_salsalabimAI : public ScriptedAI
     {
-        npc_salsalabimAI(Creature* creature) : ScriptedAI(creature) { }
+        npc_salsalabimAI(Creature* creature) : ScriptedAI(creature)
+        {
+            Initialize();
+        }
+
+        void Initialize()
+        {
+            MagneticPull_Timer = 15000;
+        }
 
         uint32 MagneticPull_Timer;
 
         void Reset() override
         {
-            MagneticPull_Timer = 15000;
+            Initialize();
             me->RestoreFaction();
         }
 

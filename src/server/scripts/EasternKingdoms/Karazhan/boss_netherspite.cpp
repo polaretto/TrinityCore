@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -81,13 +81,6 @@ public:
             Initialize();
             instance = creature->GetInstanceScript();
 
-            for (int i=0; i<3; ++i)
-            {
-                PortalGUID[i] = 0;
-                BeamTarget[i] = 0;
-                BeamerGUID[i] = 0;
-            }
-
             PortalPhase = false;
             PhaseTimer = 0;
             EmpowermentTimer = 0;
@@ -112,9 +105,9 @@ public:
         uint32 NetherbreathTimer;
         uint32 EmpowermentTimer;
         uint32 PortalTimer; // timer for beam checking
-        uint64 PortalGUID[3]; // guid's of portals
-        uint64 BeamerGUID[3]; // guid's of auxiliary beaming portals
-        uint64 BeamTarget[3]; // guid's of portals' current targets
+        ObjectGuid PortalGUID[3]; // guid's of portals
+        ObjectGuid BeamerGUID[3]; // guid's of auxiliary beaming portals
+        ObjectGuid BeamTarget[3]; // guid's of portals' current targets
 
         bool IsBetween(WorldObject* u1, WorldObject* target, WorldObject* u2) // the in-line checker
         {
@@ -133,7 +126,7 @@ public:
             if (dist(xn, yn, xh, yh) >= dist(xn, yn, xp, yp) || dist(xp, yp, xh, yh) >= dist(xn, yn, xp, yp))
                 return false;
             // check  distance from the beam
-            return (abs((xn-xp)*yh+(yp-yn)*xh-xn*yp+xp*yn)/dist(xn, yn, xp, yp) < 1.5f);
+            return (std::abs((xn-xp)*yh+(yp-yn)*xh-xn*yp+xp*yn)/dist(xn, yn, xp, yp) < 1.5f);
         }
 
         float dist(float xa, float ya, float xb, float yb) // auxiliary method for distance
@@ -157,7 +150,7 @@ public:
             pos[GREEN_PORTAL] = ((r % 2) ? 0 : (r > 1 ? 2 : 1));
             pos[BLUE_PORTAL] = (r > 1 ? 1 : 2); // Blue Portal not on the left side (0)
 
-            for (int i=0; i<3; ++i)
+            for (int i = 0; i < 3; ++i)
                 if (Creature* portal = me->SummonCreature(PortalID[i], PortalCoord[pos[i]][0], PortalCoord[pos[i]][1], PortalCoord[pos[i]][2], 0, TEMPSUMMON_TIMED_DESPAWN, 60000))
                 {
                     PortalGUID[i] = portal->GetGUID();
@@ -173,14 +166,14 @@ public:
                     portal->DisappearAndDie();
                 if (Creature* portal = ObjectAccessor::GetCreature(*me, BeamerGUID[i]))
                     portal->DisappearAndDie();
-                PortalGUID[i] = 0;
-                BeamTarget[i] = 0;
+                PortalGUID[i].Clear();
+                BeamTarget[i].Clear();
             }
         }
 
         void UpdatePortals() // Here we handle the beams' behavior
         {
-            for (int j=0; j<3; ++j) // j = color
+            for (int j = 0; j < 3; ++j) // j = color
                 if (Creature* portal = ObjectAccessor::GetCreature(*me, PortalGUID[j]))
                 {
                     // the one who's been cast upon before
@@ -188,23 +181,21 @@ public:
                     // temporary store for the best suitable beam reciever
                     Unit* target = me;
 
-                    if (Map* map = me->GetMap())
-                    {
-                        Map::PlayerList const& players = map->GetPlayers();
+                    Map::PlayerList const& players = me->GetMap()->GetPlayers();
 
-                        // get the best suitable target
-                        for (Map::PlayerList::const_iterator i = players.begin(); i != players.end(); ++i)
-                        {
-                            Player* p = i->GetSource();
-                            if (p && p->IsAlive() // alive
-                                && (!target || target->GetDistance2d(portal)>p->GetDistance2d(portal)) // closer than current best
-                                && !p->HasAura(PlayerDebuff[j], 0) // not exhausted
-                                && !p->HasAura(PlayerBuff[(j+1)%3], 0) // not on another beam
-                                && !p->HasAura(PlayerBuff[(j+2)%3], 0)
-                                && IsBetween(me, p, portal)) // on the beam
-                                target = p;
-                        }
+                    // get the best suitable target
+                    for (Map::PlayerList::const_iterator i = players.begin(); i != players.end(); ++i)
+                    {
+                        Player* p = i->GetSource();
+                        if (p && p->IsAlive() // alive
+                            && (!target || target->GetDistance2d(portal)>p->GetDistance2d(portal)) // closer than current best
+                            && !p->HasAura(PlayerDebuff[j]) // not exhausted
+                            && !p->HasAura(PlayerBuff[(j + 1) % 3]) // not on another beam
+                            && !p->HasAura(PlayerBuff[(j + 2) % 3])
+                            && IsBetween(me, p, portal)) // on the beam
+                            target = p;
                     }
+
                     // buff the target
                     if (target->GetTypeId() == TYPEID_PLAYER)
                         target->AddAura(PlayerBuff[j], target);
@@ -220,7 +211,7 @@ public:
                         {
                             beamer->CastSpell(target, PortalBeam[j], false);
                             beamer->DisappearAndDie();
-                            BeamerGUID[j] = 0;
+                            BeamerGUID[j].Clear();
                         }
                         // create new one and start beaming on the target
                         if (Creature* beamer = portal->SummonCreature(PortalID[j], portal->GetPositionX(), portal->GetPositionY(), portal->GetPositionZ(), portal->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN, 60000))
@@ -264,7 +255,7 @@ public:
 
         void HandleDoors(bool open) // Massive Door switcher
         {
-            if (GameObject* Door = ObjectAccessor::GetGameObject(*me, instance->GetData64(DATA_GO_MASSIVE_DOOR) ))
+            if (GameObject* Door = ObjectAccessor::GetGameObject(*me, instance->GetGuidData(DATA_GO_MASSIVE_DOOR) ))
                 Door->SetGoState(open ? GO_STATE_ACTIVE : GO_STATE_READY);
         }
 

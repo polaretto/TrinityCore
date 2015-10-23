@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -328,7 +328,7 @@ struct BattlegroundEYScore final : public BattlegroundScore
     friend class BattlegroundEY;
 
     protected:
-        BattlegroundEYScore(uint64 playerGuid) : BattlegroundScore(playerGuid), FlagCaptures(0) { }
+        BattlegroundEYScore(ObjectGuid playerGuid, uint32 team) : BattlegroundScore(playerGuid, team), FlagCaptures(0) { }
 
         void UpdateScore(uint32 type, uint32 value) override
         {
@@ -343,10 +343,9 @@ struct BattlegroundEYScore final : public BattlegroundScore
             }
         }
 
-        void BuildObjectivesBlock(WorldPacket& data) final override
+        void BuildObjectivesBlock(std::vector<int32>& stats) override
         {
-            data << uint32(1); // Objectives Count
-            data << uint32(FlagCaptures);
+            stats.push_back(FlagCaptures);
         }
 
         uint32 GetAttr1() const final override { return FlagCaptures; }
@@ -366,16 +365,15 @@ class BattlegroundEY : public Battleground
         void StartingEventOpenDoors() override;
 
         /* BG Flags */
-        uint64 GetFlagPickerGUID(int32 /*team*/ = -1) const override    { return m_FlagKeeper; }
-        void SetFlagPicker(uint64 guid)     { m_FlagKeeper = guid; }
-        bool IsFlagPickedup() const         { return m_FlagKeeper != 0; }
+        ObjectGuid GetFlagPickerGUID(int32 /*team*/ = -1) const override { return m_FlagKeeper; }
+        void SetFlagPicker(ObjectGuid guid) { m_FlagKeeper = guid; }
+        bool IsFlagPickedup() const         { return !m_FlagKeeper.IsEmpty(); }
         uint8 GetFlagState() const          { return m_FlagState; }
         void RespawnFlag(bool send_message);
         void RespawnFlagAfterDrop();
 
-        void RemovePlayer(Player* player, uint64 guid, uint32 team) override;
-        void HandleBuffUse(uint64 buff_guid);
-        void HandleAreaTrigger(Player* Source, uint32 Trigger) override;
+        void RemovePlayer(Player* player, ObjectGuid guid, uint32 team) override;
+        void HandleAreaTrigger(Player* source, uint32 trigger, bool entered) override;
         void HandleKillPlayer(Player* player, Player* killer) override;
         WorldSafeLocsEntry const* GetClosestGraveYard(Player* player) override;
         bool SetupBattleground() override;
@@ -383,9 +381,9 @@ class BattlegroundEY : public Battleground
         void UpdateTeamScore(uint32 Team);
         void EndBattleground(uint32 winner) override;
         bool UpdatePlayerScore(Player* player, uint32 type, uint32 value, bool doAddHonor = true) override;
-        void FillInitialWorldStates(WorldPacket& data) override;
-        void SetDroppedFlagGUID(uint64 guid, int32 /*TeamID*/ = -1) override  { m_DroppedFlagGUID = guid;}
-        uint64 GetDroppedFlagGUID() const          { return m_DroppedFlagGUID;}
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+        void SetDroppedFlagGUID(ObjectGuid guid, int32 /*TeamID*/ = -1) override  { m_DroppedFlagGUID = guid; }
+        ObjectGuid GetDroppedFlagGUID() const { return m_DroppedFlagGUID; }
 
         /* Battleground Events */
         void EventPlayerClickedOnFlag(Player* Source, GameObject* target_obj) override;
@@ -395,8 +393,9 @@ class BattlegroundEY : public Battleground
         bool IsAllNodesControlledByTeam(uint32 team) const override;
 
         uint32 GetPrematureWinner() override;
-    private:
+protected:
         void PostUpdateImpl(uint32 diff) override;
+        void GetPlayerPositionData(std::vector<WorldPackets::Battleground::BattlegroundPlayerPosition>* positions) const override;
 
         void EventPlayerCapturedFlag(Player* Source, uint32 BgObjectType);
         void EventTeamCapturedPoint(Player* Source, uint32 Point);
@@ -404,6 +403,7 @@ class BattlegroundEY : public Battleground
         void UpdatePointsCount(uint32 Team);
         void UpdatePointsIcons(uint32 Team, uint32 Point);
 
+    private:
         /* Point status updating procedures */
         void CheckSomeoneLeftPoint();
         void CheckSomeoneJoinedPoint();
@@ -420,8 +420,8 @@ class BattlegroundEY : public Battleground
 
         uint32 m_Points_Trigger[EY_POINTS_MAX];
 
-        uint64 m_FlagKeeper;                                // keepers guid
-        uint64 m_DroppedFlagGUID;
+        ObjectGuid m_FlagKeeper;                                // keepers guid
+        ObjectGuid m_DroppedFlagGUID;
         uint32 m_FlagCapturedBgObjectType;                  // type that should be despawned when flag is captured
         uint8 m_FlagState;                                  // for checking flag state
         int32 m_FlagsTimer;
@@ -430,8 +430,7 @@ class BattlegroundEY : public Battleground
         uint32 m_PointOwnedByTeam[EY_POINTS_MAX];
         uint8 m_PointState[EY_POINTS_MAX];
         int32 m_PointBarStatus[EY_POINTS_MAX];
-        typedef std::vector<uint64> PlayersNearPointType;
-        PlayersNearPointType m_PlayersNearPoint[EY_POINTS_MAX + 1];
+        GuidVector m_PlayersNearPoint[EY_POINTS_MAX + 1];
         uint8 m_CurrentPointPlayersCount[2*EY_POINTS_MAX];
 
         int32 m_PointAddingTimer;

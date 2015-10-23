@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -33,12 +33,13 @@
 #include "Player.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
+#include "Chat.h"
 
-namespace
-{
-    typedef std::set<ScriptObject*> ExampleScriptContainer;
-    ExampleScriptContainer ExampleScripts;
-}
+// namespace
+// {
+    UnusedScriptContainer UnusedScripts;
+    UnusedScriptNamesContainer UnusedScriptNames;
+// }
 
 // This is the global static registry of scripts.
 template<class TScript>
@@ -95,6 +96,12 @@ class ScriptRegistry
                     {
                         ScriptPointerList[id] = script;
                         sScriptMgr->IncrementScriptCount();
+
+                    #ifdef SCRIPTS
+                        UnusedScriptNamesContainer::iterator itr = std::lower_bound(UnusedScriptNames.begin(), UnusedScriptNames.end(), script->GetName());
+                        if (itr != UnusedScriptNames.end() && *itr == script->GetName())
+                            UnusedScriptNames.erase(itr);
+                    #endif
                     }
                     else
                     {
@@ -102,18 +109,18 @@ class ScriptRegistry
                         TC_LOG_ERROR("scripts", "Script '%s' already assigned with the same script name, so the script can't work.",
                             script->GetName().c_str());
 
-                        ASSERT(false); // Error that should be fixed ASAP.
+                        ABORT(); // Error that should be fixed ASAP.
                     }
                 }
                 else
                 {
                     // The script uses a script name from database, but isn't assigned to anything.
-                    if (script->GetName().find("example") == std::string::npos && script->GetName().find("Smart") == std::string::npos)
-                        TC_LOG_ERROR("sql.sql", "Script named '%s' does not have a script name assigned in database.",
-                            script->GetName().c_str());
+                    TC_LOG_ERROR("sql.sql", "Script named '%s' does not have a script name assigned in database.", script->GetName().c_str());
 
-                    // These scripts don't get stored anywhere so throw them into this to avoid leaking memory
-                    ExampleScripts.insert(script);
+                    // Avoid calling "delete script;" because we are currently in the script constructor
+                    // In a valid scenario this will not happen because every script has a name assigned in the database
+                    UnusedScripts.push_back(script);
+                    return;
                 }
             }
             else
@@ -176,9 +183,8 @@ struct TSpellSummary
     uint8 Effects;                                          // set of enum SelectEffect
 } *SpellSummary;
 
-ScriptMgr::ScriptMgr() : _scriptCount(0)
+ScriptMgr::ScriptMgr() : _scriptCount(0), _scheduledScripts(0)
 {
-    _scheduledScripts = 0;
 }
 
 ScriptMgr::~ScriptMgr() { }
@@ -193,6 +199,15 @@ void ScriptMgr::Initialize()
 
     FillSpellSummary();
     AddScripts();
+
+#ifdef SCRIPTS
+    for (std::string const& scriptName : UnusedScriptNames)
+    {
+        TC_LOG_ERROR("sql.sql", "ScriptName '%s' exists in database, but no core script found!", scriptName.c_str());
+    }
+#endif
+
+    UnloadUnusedScripts();
 
     TC_LOG_INFO("server.loading", ">> Loaded %u C++ scripts in %u ms", GetScriptCount(), GetMSTimeDiffToNow(oldMSTime));
 }
@@ -234,12 +249,17 @@ void ScriptMgr::Unload()
 
     #undef SCR_CLEAR
 
-    for (ExampleScriptContainer::iterator itr = ExampleScripts.begin(); itr != ExampleScripts.end(); ++itr)
-        delete *itr;
-    ExampleScripts.clear();
+    UnloadUnusedScripts();
 
     delete[] SpellSummary;
     delete[] UnitAI::AISpellInfo;
+}
+
+void ScriptMgr::UnloadUnusedScripts()
+{
+    for (size_t i = 0; i < UnusedScripts.size(); ++i)
+        delete UnusedScripts[i];
+    UnusedScripts.clear();
 }
 
 void ScriptMgr::LoadDatabase()
@@ -265,70 +285,73 @@ void ScriptMgr::FillSpellSummary()
         if (!pTempSpell)
             continue;
 
-        for (uint32 j = 0; j < MAX_SPELL_EFFECTS; ++j)
+        for (SpellEffectInfo const* effect : pTempSpell->GetEffectsForDifficulty(DIFFICULTY_NONE))
         {
+            if (!effect)
+                continue;
+
             // Spell targets self.
-            if (pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_CASTER)
+            if (effect->TargetA.GetTarget() == TARGET_UNIT_CASTER)
                 SpellSummary[i].Targets |= 1 << (SELECT_TARGET_SELF-1);
 
             // Spell targets a single enemy.
-            if (pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_DEST_TARGET_ENEMY)
+            if (effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY ||
+                effect->TargetA.GetTarget() == TARGET_DEST_TARGET_ENEMY)
                 SpellSummary[i].Targets |= 1 << (SELECT_TARGET_SINGLE_ENEMY-1);
 
             // Spell targets AoE at enemy.
-            if (pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_SRC_AREA_ENEMY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_SRC_CASTER ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_DEST_DYNOBJ_ENEMY)
+            if (effect->TargetA.GetTarget() == TARGET_UNIT_SRC_AREA_ENEMY ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY ||
+                effect->TargetA.GetTarget() == TARGET_SRC_CASTER ||
+                effect->TargetA.GetTarget() == TARGET_DEST_DYNOBJ_ENEMY)
                 SpellSummary[i].Targets |= 1 << (SELECT_TARGET_AOE_ENEMY-1);
 
             // Spell targets an enemy.
-            if (pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_DEST_TARGET_ENEMY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_SRC_AREA_ENEMY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_SRC_CASTER ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_DEST_DYNOBJ_ENEMY)
+            if (effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_ENEMY ||
+                effect->TargetA.GetTarget() == TARGET_DEST_TARGET_ENEMY ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_SRC_AREA_ENEMY ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_DEST_AREA_ENEMY ||
+                effect->TargetA.GetTarget() == TARGET_SRC_CASTER ||
+                effect->TargetA.GetTarget() == TARGET_DEST_DYNOBJ_ENEMY)
                 SpellSummary[i].Targets |= 1 << (SELECT_TARGET_ANY_ENEMY-1);
 
             // Spell targets a single friend (or self).
-            if (pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_CASTER ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_TARGET_PARTY)
+            if (effect->TargetA.GetTarget() == TARGET_UNIT_CASTER ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_PARTY)
                 SpellSummary[i].Targets |= 1 << (SELECT_TARGET_SINGLE_FRIEND-1);
 
             // Spell targets AoE friends.
-            if (pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_CASTER_AREA_PARTY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_LASTTARGET_AREA_PARTY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_SRC_CASTER)
+            if (effect->TargetA.GetTarget() == TARGET_UNIT_CASTER_AREA_PARTY ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_LASTTARGET_AREA_PARTY ||
+                effect->TargetA.GetTarget() == TARGET_SRC_CASTER)
                 SpellSummary[i].Targets |= 1 << (SELECT_TARGET_AOE_FRIEND-1);
 
             // Spell targets any friend (or self).
-            if (pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_CASTER ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_TARGET_PARTY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_CASTER_AREA_PARTY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_UNIT_LASTTARGET_AREA_PARTY ||
-                pTempSpell->Effects[j].TargetA.GetTarget() == TARGET_SRC_CASTER)
+            if (effect->TargetA.GetTarget() == TARGET_UNIT_CASTER ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_ALLY ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_TARGET_PARTY ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_CASTER_AREA_PARTY ||
+                effect->TargetA.GetTarget() == TARGET_UNIT_LASTTARGET_AREA_PARTY ||
+                effect->TargetA.GetTarget() == TARGET_SRC_CASTER)
                 SpellSummary[i].Targets |= 1 << (SELECT_TARGET_ANY_FRIEND-1);
 
             // Make sure that this spell includes a damage effect.
-            if (pTempSpell->Effects[j].Effect == SPELL_EFFECT_SCHOOL_DAMAGE ||
-                pTempSpell->Effects[j].Effect == SPELL_EFFECT_INSTAKILL ||
-                pTempSpell->Effects[j].Effect == SPELL_EFFECT_ENVIRONMENTAL_DAMAGE ||
-                pTempSpell->Effects[j].Effect == SPELL_EFFECT_HEALTH_LEECH)
+            if (effect->Effect == SPELL_EFFECT_SCHOOL_DAMAGE ||
+                effect->Effect == SPELL_EFFECT_INSTAKILL ||
+                effect->Effect == SPELL_EFFECT_ENVIRONMENTAL_DAMAGE ||
+                effect->Effect == SPELL_EFFECT_HEALTH_LEECH)
                 SpellSummary[i].Effects |= 1 << (SELECT_EFFECT_DAMAGE-1);
 
             // Make sure that this spell includes a healing effect (or an apply aura with a periodic heal).
-            if (pTempSpell->Effects[j].Effect == SPELL_EFFECT_HEAL ||
-                pTempSpell->Effects[j].Effect == SPELL_EFFECT_HEAL_MAX_HEALTH ||
-                pTempSpell->Effects[j].Effect == SPELL_EFFECT_HEAL_MECHANICAL ||
-                (pTempSpell->Effects[j].Effect == SPELL_EFFECT_APPLY_AURA  && pTempSpell->Effects[j].ApplyAuraName == 8))
+            if (effect->Effect == SPELL_EFFECT_HEAL ||
+                effect->Effect == SPELL_EFFECT_HEAL_MAX_HEALTH ||
+                effect->Effect == SPELL_EFFECT_HEAL_MECHANICAL ||
+                (effect->Effect == SPELL_EFFECT_APPLY_AURA  && effect->ApplyAuraName == 8))
                 SpellSummary[i].Effects |= 1 << (SELECT_EFFECT_HEALING-1);
 
             // Make sure that this spell applies an aura.
-            if (pTempSpell->Effects[j].Effect == SPELL_EFFECT_APPLY_AURA)
+            if (effect->Effect == SPELL_EFFECT_APPLY_AURA)
                 SpellSummary[i].Effects |= 1 << (SELECT_EFFECT_AURA-1);
         }
     }
@@ -496,9 +519,9 @@ void ScriptMgr::OnZeroDifferenceCalculation(uint8& diff, uint8 playerLevel)
     FOREACH_SCRIPT(FormulaScript)->OnZeroDifferenceCalculation(diff, playerLevel);
 }
 
-void ScriptMgr::OnBaseGainCalculation(uint32& gain, uint8 playerLevel, uint8 mobLevel, ContentLevels content)
+void ScriptMgr::OnBaseGainCalculation(uint32& gain, uint8 playerLevel, uint8 mobLevel)
 {
-    FOREACH_SCRIPT(FormulaScript)->OnBaseGainCalculation(gain, playerLevel, mobLevel, content);
+    FOREACH_SCRIPT(FormulaScript)->OnBaseGainCalculation(gain, playerLevel, mobLevel);
 }
 
 void ScriptMgr::OnGainCalculation(uint32& gain, Player* player, Unit* unit)
@@ -522,7 +545,7 @@ void ScriptMgr::OnGroupRateCalculation(float& rate, uint32 count, bool isRaid)
             MapEntry const* C = I->second->GetEntry(); \
             if (!C) \
                 continue; \
-            if (C->MapID == V->GetId()) \
+            if (C->ID == V->GetId()) \
             {
 
 #define SCR_MAP_END \
@@ -929,19 +952,19 @@ bool ScriptMgr::OnDummyEffect(Unit* caster, uint32 spellId, SpellEffIndex effInd
     return tmpscript->OnDummyEffect(caster, spellId, effIndex, target);
 }
 
-bool ScriptMgr::OnAreaTrigger(Player* player, AreaTriggerEntry const* trigger)
+bool ScriptMgr::OnAreaTrigger(Player* player, AreaTriggerEntry const* trigger, bool entered)
 {
     ASSERT(player);
     ASSERT(trigger);
 
-    GET_SCRIPT_RET(AreaTriggerScript, sObjectMgr->GetAreaTriggerScriptId(trigger->id), tmpscript, false);
-    return tmpscript->OnTrigger(player, trigger);
+    GET_SCRIPT_RET(AreaTriggerScript, sObjectMgr->GetAreaTriggerScriptId(trigger->ID), tmpscript, false);
+    return tmpscript->OnTrigger(player, trigger, entered);
 }
 
 Battleground* ScriptMgr::CreateBattleground(BattlegroundTypeId /*typeId*/)
 {
     /// @todo Implement script-side battlegrounds.
-    ASSERT(false);
+    ABORT();
     return NULL;
 }
 
@@ -953,12 +976,15 @@ OutdoorPvP* ScriptMgr::CreateOutdoorPvP(OutdoorPvPData const* data)
     return tmpscript->GetOutdoorPvP();
 }
 
-std::vector<ChatCommand*> ScriptMgr::GetChatCommands()
+std::vector<ChatCommand> ScriptMgr::GetChatCommands()
 {
-    std::vector<ChatCommand*> table;
+    std::vector<ChatCommand> table;
 
     FOR_SCRIPTS_RET(CommandScript, itr, end, table)
-        table.push_back(itr->second->GetCommands());
+    {
+        std::vector<ChatCommand> cmds = itr->second->GetCommands();
+        table.insert(table.end(), cmds.begin(), cmds.end());
+    }
 
     return table;
 }
@@ -1175,12 +1201,12 @@ void ScriptMgr::OnPlayerTalentsReset(Player* player, bool noCost)
     FOREACH_SCRIPT(PlayerScript)->OnTalentsReset(player, noCost);
 }
 
-void ScriptMgr::OnPlayerMoneyChanged(Player* player, int32& amount)
+void ScriptMgr::OnPlayerMoneyChanged(Player* player, int64& amount)
 {
     FOREACH_SCRIPT(PlayerScript)->OnMoneyChanged(player, amount);
 }
 
-void ScriptMgr::OnPlayerMoneyLimit(Player* player, int32 amount)
+void ScriptMgr::OnPlayerMoneyLimit(Player* player, int64 amount)
 {
     FOREACH_SCRIPT(PlayerScript)->OnMoneyLimit(player, amount);
 }
@@ -1235,12 +1261,12 @@ void ScriptMgr::OnPlayerChat(Player* player, uint32 type, uint32 lang, std::stri
     FOREACH_SCRIPT(PlayerScript)->OnChat(player, type, lang, msg, channel);
 }
 
-void ScriptMgr::OnPlayerEmote(Player* player, uint32 emote)
+void ScriptMgr::OnPlayerClearEmote(Player* player)
 {
-    FOREACH_SCRIPT(PlayerScript)->OnEmote(player, emote);
+    FOREACH_SCRIPT(PlayerScript)->OnClearEmote(player);
 }
 
-void ScriptMgr::OnPlayerTextEmote(Player* player, uint32 textEmote, uint32 emoteNum, uint64 guid)
+void ScriptMgr::OnPlayerTextEmote(Player* player, uint32 textEmote, uint32 emoteNum, ObjectGuid guid)
 {
     FOREACH_SCRIPT(PlayerScript)->OnTextEmote(player, textEmote, emoteNum, guid);
 }
@@ -1265,12 +1291,12 @@ void ScriptMgr::OnPlayerCreate(Player* player)
     FOREACH_SCRIPT(PlayerScript)->OnCreate(player);
 }
 
-void ScriptMgr::OnPlayerDelete(uint64 guid, uint32 accountId)
+void ScriptMgr::OnPlayerDelete(ObjectGuid guid, uint32 accountId)
 {
     FOREACH_SCRIPT(PlayerScript)->OnDelete(guid, accountId);
 }
 
-void ScriptMgr::OnPlayerFailedDelete(uint64 guid, uint32 accountId)
+void ScriptMgr::OnPlayerFailedDelete(ObjectGuid guid, uint32 accountId)
 {
     FOREACH_SCRIPT(PlayerScript)->OnFailedDelete(guid, accountId);
 }
@@ -1332,9 +1358,9 @@ void ScriptMgr::OnGuildAddMember(Guild* guild, Player* player, uint8& plRank)
     FOREACH_SCRIPT(GuildScript)->OnAddMember(guild, player, plRank);
 }
 
-void ScriptMgr::OnGuildRemoveMember(Guild* guild, Player* player, bool isDisbanding, bool isKicked)
+void ScriptMgr::OnGuildRemoveMember(Guild* guild, ObjectGuid guid, bool isDisbanding, bool isKicked)
 {
-    FOREACH_SCRIPT(GuildScript)->OnRemoveMember(guild, player, isDisbanding, isKicked);
+    FOREACH_SCRIPT(GuildScript)->OnRemoveMember(guild, guid, isDisbanding, isKicked);
 }
 
 void ScriptMgr::OnGuildMOTDChanged(Guild* guild, const std::string& newMotd)
@@ -1357,12 +1383,12 @@ void ScriptMgr::OnGuildDisband(Guild* guild)
     FOREACH_SCRIPT(GuildScript)->OnDisband(guild);
 }
 
-void ScriptMgr::OnGuildMemberWitdrawMoney(Guild* guild, Player* player, uint32 &amount, bool isRepair)
+void ScriptMgr::OnGuildMemberWitdrawMoney(Guild* guild, Player* player, uint64 &amount, bool isRepair)
 {
     FOREACH_SCRIPT(GuildScript)->OnMemberWitdrawMoney(guild, player, amount, isRepair);
 }
 
-void ScriptMgr::OnGuildMemberDepositMoney(Guild* guild, Player* player, uint32 &amount)
+void ScriptMgr::OnGuildMemberDepositMoney(Guild* guild, Player* player, uint64 &amount)
 {
     FOREACH_SCRIPT(GuildScript)->OnMemberDepositMoney(guild, player, amount);
 }
@@ -1373,36 +1399,36 @@ void ScriptMgr::OnGuildItemMove(Guild* guild, Player* player, Item* pItem, bool 
     FOREACH_SCRIPT(GuildScript)->OnItemMove(guild, player, pItem, isSrcBank, srcContainer, srcSlotId, isDestBank, destContainer, destSlotId);
 }
 
-void ScriptMgr::OnGuildEvent(Guild* guild, uint8 eventType, uint32 playerGuid1, uint32 playerGuid2, uint8 newRank)
+void ScriptMgr::OnGuildEvent(Guild* guild, uint8 eventType, ObjectGuid::LowType playerGuid1, ObjectGuid::LowType playerGuid2, uint8 newRank)
 {
     FOREACH_SCRIPT(GuildScript)->OnEvent(guild, eventType, playerGuid1, playerGuid2, newRank);
 }
 
-void ScriptMgr::OnGuildBankEvent(Guild* guild, uint8 eventType, uint8 tabId, uint32 playerGuid, uint32 itemOrMoney, uint16 itemStackCount, uint8 destTabId)
+void ScriptMgr::OnGuildBankEvent(Guild* guild, uint8 eventType, uint8 tabId, ObjectGuid::LowType playerGuid, uint64 itemOrMoney, uint16 itemStackCount, uint8 destTabId)
 {
     FOREACH_SCRIPT(GuildScript)->OnBankEvent(guild, eventType, tabId, playerGuid, itemOrMoney, itemStackCount, destTabId);
 }
 
 // Group
-void ScriptMgr::OnGroupAddMember(Group* group, uint64 guid)
+void ScriptMgr::OnGroupAddMember(Group* group, ObjectGuid guid)
 {
     ASSERT(group);
     FOREACH_SCRIPT(GroupScript)->OnAddMember(group, guid);
 }
 
-void ScriptMgr::OnGroupInviteMember(Group* group, uint64 guid)
+void ScriptMgr::OnGroupInviteMember(Group* group, ObjectGuid guid)
 {
     ASSERT(group);
     FOREACH_SCRIPT(GroupScript)->OnInviteMember(group, guid);
 }
 
-void ScriptMgr::OnGroupRemoveMember(Group* group, uint64 guid, RemoveMethod method, uint64 kicker, const char* reason)
+void ScriptMgr::OnGroupRemoveMember(Group* group, ObjectGuid guid, RemoveMethod method, ObjectGuid kicker, const char* reason)
 {
     ASSERT(group);
     FOREACH_SCRIPT(GroupScript)->OnRemoveMember(group, guid, method, kicker, reason);
 }
 
-void ScriptMgr::OnGroupChangeLeader(Group* group, uint64 newLeaderGuid, uint64 oldLeaderGuid)
+void ScriptMgr::OnGroupChangeLeader(Group* group, ObjectGuid newLeaderGuid, ObjectGuid oldLeaderGuid)
 {
     ASSERT(group);
     FOREACH_SCRIPT(GroupScript)->OnChangeLeader(group, newLeaderGuid, oldLeaderGuid);

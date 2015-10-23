@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -55,42 +55,40 @@ enum SpellFamilyFlag
     // SPELLFAMILYFLAG2 = SpellFamilyFlags[2]
 
     // Rogue
-    SPELLFAMILYFLAG_ROGUE_VANISH            = 0x00000800,
-    SPELLFAMILYFLAG_ROGUE_VAN_EVAS_SPRINT   = 0x00000860,    // Vanish, Evasion, Sprint
-    SPELLFAMILYFLAG1_ROGUE_COLDB_SHADOWSTEP = 0x00000240,    // Cold Blood, Shadowstep
-    SPELLFAMILYFLAG_ROGUE_KICK              = 0x00000010,   // Kick
-    SPELLFAMILYFLAG1_ROGUE_DISMANTLE        = 0x00100000,   // Dismantle
-    SPELLFAMILYFLAG_ROGUE_BLADE_FLURRY      = 0x40000000,   // Blade Flurry
-    SPELLFAMILYFLAG1_ROGUE_BLADE_FLURRY     = 0x00000800,   // Blade Flurry
+    SPELLFAMILYFLAG0_ROGUE_VANISH               = 0x00000800,
+    SPELLFAMILYFLAG0_ROGUE_VAN_SPRINT           = 0x00000840, // Vanish, Sprint
+    SPELLFAMILYFLAG1_ROGUE_SHADOWSTEP           = 0x00000200, // Shadowstep
+    SPELLFAMILYFLAG0_ROGUE_KICK                 = 0x00000010, // Kick
+    SPELLFAMILYFLAG1_ROGUE_DISMANTLE_SMOKE_BOMB = 0x80100000, // Dismantle, Smoke Bomb
 
     // Warrior
-    SPELLFAMILYFLAG_WARRIOR_CHARGE          = 0x00000001,
-    SPELLFAMILYFLAG_WARRIOR_SLAM            = 0x00200000,
-    SPELLFAMILYFLAG_WARRIOR_EXECUTE         = 0x20000000,
-    SPELLFAMILYFLAG_WARRIOR_CONCUSSION_BLOW = 0x04000000,
+    SPELLFAMILYFLAG_WARRIOR_CHARGE              = 0x00000001,
+    SPELLFAMILYFLAG_WARRIOR_SLAM                = 0x00200000,
+    SPELLFAMILYFLAG_WARRIOR_EXECUTE             = 0x20000000,
+    SPELLFAMILYFLAG_WARRIOR_CONCUSSION_BLOW     = 0x04000000,
 
     // Warlock
-    SPELLFAMILYFLAG_WARLOCK_LIFETAP         = 0x00040000,
+    SPELLFAMILYFLAG_WARLOCK_LIFETAP             = 0x00040000,
 
     // Druid
-    SPELLFAMILYFLAG2_DRUID_STARFALL         = 0x00000100,
+    SPELLFAMILYFLAG2_DRUID_STARFALL             = 0x00000100,
 
     // Paladin
-    SPELLFAMILYFLAG1_PALADIN_DIVINESTORM    = 0x00020000,
+    SPELLFAMILYFLAG1_PALADIN_DIVINESTORM        = 0x00020000,
 
     // Shaman
-    SPELLFAMILYFLAG_SHAMAN_FROST_SHOCK      = 0x80000000,
-    SPELLFAMILYFLAG_SHAMAN_HEALING_STREAM   = 0x00002000,
-    SPELLFAMILYFLAG_SHAMAN_MANA_SPRING      = 0x00004000,
-    SPELLFAMILYFLAG2_SHAMAN_LAVA_LASH       = 0x00000004,
-    SPELLFAMILYFLAG_SHAMAN_FIRE_NOVA        = 0x28000000,
+    SPELLFAMILYFLAG_SHAMAN_FROST_SHOCK          = 0x80000000,
+    SPELLFAMILYFLAG_SHAMAN_HEALING_STREAM       = 0x00002000,
+    SPELLFAMILYFLAG_SHAMAN_MANA_SPRING          = 0x00004000,
+    SPELLFAMILYFLAG2_SHAMAN_LAVA_LASH           = 0x00000004,
+    SPELLFAMILYFLAG_SHAMAN_FIRE_NOVA            = 0x28000000,
 
     // Deathknight
-    SPELLFAMILYFLAG_DK_DEATH_STRIKE         = 0x00000010,
-    SPELLFAMILYFLAG_DK_DEATH_COIL           = 0x00002000,
+    SPELLFAMILYFLAG_DK_DEATH_STRIKE             = 0x00000010,
+    SPELLFAMILYFLAG_DK_DEATH_COIL               = 0x00002000,
 
     /// @todo Figure out a more accurate name for the following familyflag(s)
-    SPELLFAMILYFLAG_SHAMAN_TOTEM_EFFECTS    = 0x04000000  // Seems to be linked to most totems and some totem effects
+    SPELLFAMILYFLAG_SHAMAN_TOTEM_EFFECTS        = 0x04000000  // Seems to be linked to most totems and some totem effects
 };
 
 
@@ -278,7 +276,7 @@ struct SpellProcEventEntry
 {
     uint32      schoolMask;                                 // if nonzero - bit mask for matching proc condition based on spell candidate's school: Fire=2, Mask=1<<(2-1)=2
     uint32      spellFamilyName;                            // if nonzero - for matching proc condition based on candidate spell's SpellFamilyNamer value
-    flag96      spellFamilyMask;                            // if nonzero - for matching proc condition based on candidate spell's SpellFamilyFlags  (like auras 107 and 108 do)
+    flag128     spellFamilyMask;                            // if nonzero - for matching proc condition based on candidate spell's SpellFamilyFlags  (like auras 107 and 108 do)
     uint32      procFlags;                                  // bitmask for matching proc event
     uint32      procEx;                                     // proc Extend info (see ProcFlagsEx)
     float       ppmRate;                                    // for melee (ranged?) damage spells - proc rate per minute. if zero, falls back to flat chance from Spell.dbc
@@ -292,7 +290,7 @@ struct SpellProcEntry
 {
     uint32      schoolMask;                                 // if nonzero - bitmask for matching proc condition based on spell's school
     uint32      spellFamilyName;                            // if nonzero - for matching proc condition based on candidate spell's SpellFamilyName
-    flag96      spellFamilyMask;                            // if nonzero - bitmask for matching proc condition based on candidate spell's SpellFamilyFlags
+    flag128     spellFamilyMask;                            // if nonzero - bitmask for matching proc condition based on candidate spell's SpellFamilyFlags
     uint32      typeMask;                                   // if nonzero - owerwrite procFlags field for given Spell.dbc entry, bitmask for matching proc condition, see enum ProcFlags
     uint32      spellTypeMask;                              // if nonzero - bitmask for matching proc condition based on candidate spell's damage/heal effects, see enum ProcFlagsSpellType
     uint32      spellPhaseMask;                             // if nonzero - bitmask for matching phase of a spellcast on which proc occurs, see enum ProcFlagsSpellPhase
@@ -314,16 +312,6 @@ struct SpellEnchantProcEntry
 };
 
 typedef std::unordered_map<uint32, SpellEnchantProcEntry> SpellEnchantProcEventMap;
-
-struct SpellBonusEntry
-{
-    float  direct_damage;
-    float  dot_damage;
-    float  ap_bonus;
-    float  ap_dot_bonus;
-};
-
-typedef std::unordered_map<uint32, SpellBonusEntry>     SpellBonusMap;
 
 enum SpellGroup
 {
@@ -547,9 +535,10 @@ typedef std::map<uint32, SpellLearnSkillNode> SpellLearnSkillMap;
 
 struct SpellLearnSpellNode
 {
-    uint32 spell;
-    bool active;                                            // show in spellbook or not
-    bool autoLearned;
+    uint32 Spell;
+    uint32 OverridesSpell;
+    bool Active;                    // show in spellbook or not
+    bool AutoLearned;               // This marks the spell as automatically learned from another source that - will only be used for unlearning
 };
 
 typedef std::multimap<uint32, SpellLearnSpellNode> SpellLearnSpellMap;
@@ -558,10 +547,15 @@ typedef std::pair<SpellLearnSpellMap::const_iterator, SpellLearnSpellMap::const_
 typedef std::multimap<uint32, SkillLineAbilityEntry const*> SkillLineAbilityMap;
 typedef std::pair<SkillLineAbilityMap::const_iterator, SkillLineAbilityMap::const_iterator> SkillLineAbilityMapBounds;
 
+typedef std::set<uint32> PetFamilySpellsSet;
+typedef std::map<uint32, PetFamilySpellsSet> PetFamilySpellsStore;
+
 typedef std::multimap<uint32, uint32> PetLevelupSpellSet;
 typedef std::map<uint32, PetLevelupSpellSet> PetLevelupSpellMap;
 
 typedef std::map<uint32, uint32> SpellDifficultySearcherMap;
+
+#define MAX_CREATURE_SPELL_DATA_SLOT 4
 
 struct PetDefaultSpellsEntry
 {
@@ -580,6 +574,8 @@ typedef std::map<int32, std::vector<int32> > SpellLinkedMap;
 
 bool IsPrimaryProfessionSkill(uint32 skill);
 
+bool IsWeaponSkill(uint32 skill);
+
 inline bool IsProfessionSkill(uint32 skill)
 {
     return  IsPrimaryProfessionSkill(skill) || skill == SKILL_FISHING || skill == SKILL_COOKING || skill == SKILL_FIRST_AID;
@@ -593,11 +589,12 @@ inline bool IsProfessionOrRidingSkill(uint32 skill)
 bool IsPartOfSkillLine(uint32 skillId, uint32 spellId);
 
 // spell diminishing returns
-DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellInfo const* spellproto, bool triggered);
+DiminishingGroup GetDiminishingReturnsGroupForSpell(SpellInfo const* spellproto);
 DiminishingReturnsType GetDiminishingReturnsGroupType(DiminishingGroup group);
 DiminishingLevels GetDiminishingReturnsMaxLevel(DiminishingGroup group);
-int32 GetDiminishingReturnsLimitDuration(DiminishingGroup group, SpellInfo const* spellproto);
-bool IsDiminishingReturnsGroupDurationLimited(DiminishingGroup group);
+int32 GetDiminishingReturnsLimitDuration(SpellInfo const* spellproto);
+
+extern PetFamilySpellsStore                         sPetFamilySpellsStore;
 
 class SpellMgr
 {
@@ -616,12 +613,6 @@ class SpellMgr
 
         // Spell correctness for client using
         static bool IsSpellValid(SpellInfo const* spellInfo, Player* player = NULL, bool msg = true);
-
-        // Spell difficulty
-        uint32 GetSpellDifficultyId(uint32 spellId) const;
-        void SetSpellDifficultyId(uint32 spellId, uint32 id);
-        uint32 GetSpellIdForDifficulty(uint32 spellId, Unit const* caster) const;
-        SpellInfo const* GetSpellForDifficultyFromSpell(SpellInfo const* spell, Unit const* caster) const;
 
         // Spell Ranks table
         SpellChainNode const* GetSpellChainNode(uint32 spell_id) const;
@@ -668,9 +659,6 @@ class SpellMgr
         SpellProcEntry const* GetSpellProcEntry(uint32 spellId) const;
         bool CanSpellTriggerProcOnEvent(SpellProcEntry const& procEntry, ProcEventInfo& eventInfo) const;
 
-        // Spell bonus data table
-        SpellBonusEntry const* GetSpellBonusData(uint32 spellId) const;
-
         // Spell threat table
         SpellThreatEntry const* GetSpellThreatEntry(uint32 spellID) const;
 
@@ -696,14 +684,16 @@ class SpellMgr
         // SpellInfo object management
         SpellInfo const* GetSpellInfo(uint32 spellId) const { return spellId < GetSpellInfoStoreSize() ?  mSpellInfoMap[spellId] : NULL; }
         // Use this only with 100% valid spellIds
-        SpellInfo const* EnsureSpellInfo(uint32 spellId) const
+        SpellInfo const* AssertSpellInfo(uint32 spellId) const
         {
             ASSERT(spellId < GetSpellInfoStoreSize());
             SpellInfo const* spellInfo = mSpellInfoMap[spellId];
             ASSERT(spellInfo);
             return spellInfo;
         }
-        uint32 GetSpellInfoStoreSize() const { return mSpellInfoMap.size(); }
+        uint32 GetSpellInfoStoreSize() const { return uint32(mSpellInfoMap.size()); }
+
+        void LoadPetFamilySpellsStore();
 
     private:
         SpellInfo* _GetSpellInfo(uint32 spellId) { return spellId < GetSpellInfoStoreSize() ?  mSpellInfoMap[spellId] : NULL; }
@@ -713,7 +703,6 @@ class SpellMgr
 
         // Loading data at server startup
         void UnloadSpellInfoChains();
-        void LoadSpellTalentRanks();
         void LoadSpellRanks();
         void LoadSpellRequired();
         void LoadSpellLearnSkills();
@@ -723,7 +712,6 @@ class SpellMgr
         void LoadSpellGroupStackRules();
         void LoadSpellProcEvents();
         void LoadSpellProcs();
-        void LoadSpellBonusess();
         void LoadSpellThreats();
         void LoadSkillLineAbilityMap();
         void LoadSpellPetAuras();
@@ -752,7 +740,6 @@ class SpellMgr
         SpellGroupStackMap         mSpellGroupStack;
         SpellProcEventMap          mSpellProcEventMap;
         SpellProcMap               mSpellProcMap;
-        SpellBonusMap              mSpellBonusMap;
         SpellThreatMap             mSpellThreatMap;
         SpellPetAuraMap            mSpellPetAuraMap;
         SpellLinkedMap             mSpellLinkedMap;

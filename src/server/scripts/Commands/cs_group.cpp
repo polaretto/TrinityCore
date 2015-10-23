@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -28,23 +28,21 @@ class group_commandscript : public CommandScript
 public:
     group_commandscript() : CommandScript("group_commandscript") { }
 
-    ChatCommand* GetCommands() const override
+    std::vector<ChatCommand> GetCommands() const override
     {
-        static ChatCommand groupCommandTable[] =
+        static std::vector<ChatCommand> groupCommandTable =
         {
-            { "leader",  rbac::RBAC_PERM_COMMAND_GROUP_LEADER,  false, &HandleGroupLeaderCommand,  "", NULL },
-            { "disband", rbac::RBAC_PERM_COMMAND_GROUP_DISBAND, false, &HandleGroupDisbandCommand, "", NULL },
-            { "remove",  rbac::RBAC_PERM_COMMAND_GROUP_REMOVE,  false, &HandleGroupRemoveCommand,  "", NULL },
-            { "join",    rbac::RBAC_PERM_COMMAND_GROUP_JOIN,    false, &HandleGroupJoinCommand,    "", NULL },
-            { "list",    rbac::RBAC_PERM_COMMAND_GROUP_LIST,    false, &HandleGroupListCommand,    "", NULL },
-            { "summon",  rbac::RBAC_PERM_COMMAND_GROUP_SUMMON,  false, &HandleGroupSummonCommand,  "", NULL },
-            { NULL,      0,                               false, NULL,                       "", NULL }
+            { "leader",  rbac::RBAC_PERM_COMMAND_GROUP_LEADER,  false, &HandleGroupLeaderCommand,  "" },
+            { "disband", rbac::RBAC_PERM_COMMAND_GROUP_DISBAND, false, &HandleGroupDisbandCommand, "" },
+            { "remove",  rbac::RBAC_PERM_COMMAND_GROUP_REMOVE,  false, &HandleGroupRemoveCommand,  "" },
+            { "join",    rbac::RBAC_PERM_COMMAND_GROUP_JOIN,    false, &HandleGroupJoinCommand,    "" },
+            { "list",    rbac::RBAC_PERM_COMMAND_GROUP_LIST,    false, &HandleGroupListCommand,    "" },
+            { "summon",  rbac::RBAC_PERM_COMMAND_GROUP_SUMMON,  false, &HandleGroupSummonCommand,  "" },
         };
 
-        static ChatCommand commandTable[] =
+        static std::vector<ChatCommand> commandTable =
         {
             { "group", rbac::RBAC_PERM_COMMAND_GROUP, false, NULL, "", groupCommandTable },
-            { NULL,    0,                       false, NULL, "", NULL }
         };
         return commandTable;
     }
@@ -57,7 +55,7 @@ public:
             return false;
 
         // check online security
-        if (handler->HasLowerSecurity(target, 0))
+        if (handler->HasLowerSecurity(target, ObjectGuid::Empty))
             return false;
 
         Group* group = target->GetGroup();
@@ -95,7 +93,7 @@ public:
                 continue;
 
             // check online security
-            if (handler->HasLowerSecurity(player, 0))
+            if (handler->HasLowerSecurity(player, ObjectGuid::Empty))
                 return false;
 
             std::string plNameLink = handler->GetNameLink(player);
@@ -147,7 +145,7 @@ public:
     {
         Player* player = NULL;
         Group* group = NULL;
-        uint64 guid = 0;
+        ObjectGuid guid;
         char* nameStr = strtok((char*)args, " ");
 
         if (!handler->GetPlayerGroupAndGUIDByName(nameStr, player, group, guid))
@@ -173,7 +171,7 @@ public:
     {
         Player* player = NULL;
         Group* group = NULL;
-        uint64 guid = 0;
+        ObjectGuid guid;
         char* nameStr = strtok((char*)args, " ");
 
         if (!handler->GetPlayerGroupAndGUIDByName(nameStr, player, group, guid))
@@ -194,7 +192,7 @@ public:
     {
         Player* player = NULL;
         Group* group = NULL;
-        uint64 guid = 0;
+        ObjectGuid guid;
         char* nameStr = strtok((char*)args, " ");
 
         if (!handler->GetPlayerGroupAndGUIDByName(nameStr, player, group, guid))
@@ -220,8 +218,8 @@ public:
         Player* playerTarget = NULL;
         Group* groupSource = NULL;
         Group* groupTarget = NULL;
-        uint64 guidSource = 0;
-        uint64 guidTarget = 0;
+        ObjectGuid guidSource;
+        ObjectGuid guidTarget;
         char* nameplgrStr = strtok((char*)args, " ");
         char* nameplStr = strtok(NULL, " ");
 
@@ -263,18 +261,18 @@ public:
         // Get ALL the variables!
         Player* playerTarget;
         uint32 phase = 0;
-        uint64 guidTarget;
+        ObjectGuid guidTarget;
         std::string nameTarget;
         std::string zoneName;
         const char* onlineState = "";
 
         // Parse the guid to uint32...
-        uint32 parseGUID = MAKE_NEW_GUID(atol((char*)args), 0, HIGHGUID_PLAYER);
+        ObjectGuid parseGUID = ObjectGuid::Create<HighGuid::Player>(strtoull(args, nullptr, 10));
 
         // ... and try to extract a player out of it.
-        if (sObjectMgr->GetPlayerNameByGUID(parseGUID, nameTarget))
+        if (ObjectMgr::GetPlayerNameByGUID(parseGUID, nameTarget))
         {
-            playerTarget = sObjectMgr->GetPlayerByLowGUID(parseGUID);
+            playerTarget = ObjectAccessor::FindPlayer(parseGUID);
             guidTarget = parseGUID;
         }
         // If not, we return false and end right away.
@@ -292,7 +290,7 @@ public:
         if (!groupTarget)
         {
             PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_GROUP_MEMBER);
-            stmt->setUInt32(0, guidTarget);
+            stmt->setUInt64(0, guidTarget.GetCounter());
             PreparedQueryResult resultGroup = CharacterDatabase.Query(stmt);
             if (resultGroup)
                 groupTarget = sGroupMgr->GetGroupByDbStoreId((*resultGroup)[0].GetUInt32());
@@ -343,19 +341,18 @@ public:
 
             // Check if iterator is online. If is...
             Player* p = ObjectAccessor::FindPlayer((*itr).guid);
-            if (p && p->IsInWorld())
+            if (p)
             {
                 // ... than, it prints information like "is online", where he is, etc...
                 onlineState = "online";
                 phase = (!p->IsGameMaster() ? p->GetPhaseMask() : -1);
-                uint32 locale = handler->GetSessionDbcLocale();
 
                 AreaTableEntry const* area = GetAreaEntryByAreaID(p->GetAreaId());
                 if (area)
                 {
-                    AreaTableEntry const* zone = GetAreaEntryByAreaID(area->zone);
+                    AreaTableEntry const* zone = GetAreaEntryByAreaID(area->ParentAreaID);
                     if (zone)
-                        zoneName = zone->area_name[locale];
+                        zoneName = zone->AreaName_lang;
                 }
             }
             else
@@ -368,7 +365,7 @@ public:
 
             // Now we can print those informations for every single member of each group!
             handler->PSendSysMessage(LANG_GROUP_PLAYER_NAME_GUID, slot.name.c_str(), onlineState,
-                zoneName.c_str(), phase, GUID_LOPART(slot.guid), flags.c_str(),
+                zoneName.c_str(), phase, slot.guid.ToString().c_str(), flags.c_str(),
                 lfg::GetRolesString(slot.roles).c_str());
         }
 

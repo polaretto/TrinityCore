@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -61,30 +61,18 @@ class instance_culling_of_stratholme : public InstanceMapScript
                 SetBossNumber(EncounterCount);
                 LoadDoorData(doorData);
 
-                _chromieGUID       = 0;
-                _arthasGUID        = 0;
-                _meathookGUID      = 0;
-                _salrammGUID       = 0;
-                _epochGUID         = 0;
-                _malGanisGUID      = 0;
-                _infiniteGUID      = 0;
-                _shkafGateGUID     = 0;
-                _malGanisGate1GUID = 0;
-                _malGanisGate2GUID = 0;
-                _exitGateGUID      = 0;
-                _malGanisChestGUID = 0;
-                _genericBunnyGUID  = 0;
                 _crateCount        = 0;
                 _eventTimer        = 0;
+                _infiniteCouterState = NOT_STARTED;
             }
 
-            void FillInitialWorldStates(WorldPacket& data) override
+            void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
             {
-                data << uint32(WORLDSTATE_SHOW_CRATES) << uint32(1);
-                data << uint32(WORLDSTATE_CRATES_REVEALED) << uint32(_crateCount);
-                data << uint32(WORLDSTATE_WAVE_COUNT) << uint32(0);
-                data << uint32(WORLDSTATE_TIME_GUARDIAN) << uint32(25);
-                data << uint32(WORLDSTATE_TIME_GUARDIAN_SHOW) << uint32(0);
+                packet.Worldstates.emplace_back(uint32(WORLDSTATE_SHOW_CRATES), 1);
+                packet.Worldstates.emplace_back(uint32(WORLDSTATE_CRATES_REVEALED), int32(_crateCount));
+                packet.Worldstates.emplace_back(uint32(WORLDSTATE_WAVE_COUNT), 0);
+                packet.Worldstates.emplace_back(uint32(WORLDSTATE_TIME_GUARDIAN), 25);
+                packet.Worldstates.emplace_back(uint32(WORLDSTATE_TIME_GUARDIAN_SHOW), 0);
             }
 
             void OnCreatureCreate(Creature* creature) override
@@ -175,7 +163,7 @@ class instance_culling_of_stratholme : public InstanceMapScript
                             // Summon Chromie and global whisper
                             if (Creature* chromie = instance->SummonCreature(NPC_CHROMIE_2, ChromieSummonPos[0]))
                                 if (!instance->GetPlayers().isEmpty())
-                                    chromie->AI()->TalkToMap(SAY_CRATES_COMPLETED);
+                                    chromie->AI()->Talk(SAY_CRATES_COMPLETED);
                         }
                         DoUpdateWorldState(WORLDSTATE_CRATES_REVEALED, _crateCount);
                         break;
@@ -216,7 +204,7 @@ class instance_culling_of_stratholme : public InstanceMapScript
                         if (state == DONE)
                         {
                             if (GameObject* go = instance->GetGameObject(_malGanisChestGUID))
-                                go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_INTERACT_COND);
+                                go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
                             instance->SummonCreature(NPC_CHROMIE_3, ChromieSummonPos[1]);
                         }
                         break;
@@ -241,7 +229,7 @@ class instance_culling_of_stratholme : public InstanceMapScript
                 return 0;
             }
 
-            uint64 GetData64(uint32 identifier) const override
+            ObjectGuid GetGuidData(uint32 identifier) const override
             {
                 switch (identifier)
                 {
@@ -270,7 +258,7 @@ class instance_culling_of_stratholme : public InstanceMapScript
                     default:
                         break;
                 }
-                return 0;
+                return ObjectGuid::Empty;
             }
 
             void Update(uint32 diff) override
@@ -289,17 +277,17 @@ class instance_culling_of_stratholme : public InstanceMapScript
                                 case 25:
                                     if (instance->HavePlayers())
                                         if (Creature* chromie = instance->GetCreature(_chromieGUID))
-                                            chromie->AI()->TalkToMap(SAY_INFINITE_START);
+                                            chromie->AI()->Talk(SAY_INFINITE_START);
                                     break;
                                 case 5:
                                     if (instance->HavePlayers())
                                         if (Creature* chromie = instance->GetCreature(_chromieGUID))
-                                            chromie->AI()->TalkToMap(SAY_INFINITE);
+                                            chromie->AI()->Talk(SAY_INFINITE);
                                     break;
                                 case 0:
                                     if (instance->HavePlayers())
                                         if (Creature* chromie = instance->GetCreature(_chromieGUID))
-                                            chromie->AI()->TalkToMap(SAY_INFINITE_FAIL);
+                                            chromie->AI()->Talk(SAY_INFINITE_FAIL);
 
                                     if (Creature* infinite = instance->GetCreature(_infiniteGUID))
                                     {
@@ -330,19 +318,19 @@ class instance_culling_of_stratholme : public InstanceMapScript
             }
 
         private:
-            uint64 _chromieGUID;
-            uint64 _arthasGUID;
-            uint64 _meathookGUID;
-            uint64 _salrammGUID;
-            uint64 _epochGUID;
-            uint64 _malGanisGUID;
-            uint64 _infiniteGUID;
-            uint64 _shkafGateGUID;
-            uint64 _malGanisGate1GUID;
-            uint64 _malGanisGate2GUID;
-            uint64 _exitGateGUID;
-            uint64 _malGanisChestGUID;
-            uint64 _genericBunnyGUID;
+            ObjectGuid _chromieGUID;
+            ObjectGuid _arthasGUID;
+            ObjectGuid _meathookGUID;
+            ObjectGuid _salrammGUID;
+            ObjectGuid _epochGUID;
+            ObjectGuid _malGanisGUID;
+            ObjectGuid _infiniteGUID;
+            ObjectGuid _shkafGateGUID;
+            ObjectGuid _malGanisGate1GUID;
+            ObjectGuid _malGanisGate2GUID;
+            ObjectGuid _exitGateGUID;
+            ObjectGuid _malGanisChestGUID;
+            ObjectGuid _genericBunnyGUID;
 
             uint32 _crateCount;
             uint32 _eventTimer;

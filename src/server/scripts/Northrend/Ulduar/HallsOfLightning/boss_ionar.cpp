@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -168,7 +168,7 @@ public:
 
             Position pos = me->GetPosition();
 
-            for (uint64 guid : lSparkList)
+            for (ObjectGuid guid : lSparkList)
             {
                 if (Creature* pSpark = ObjectAccessor::GetCreature(*me, guid))
                 {
@@ -348,7 +348,7 @@ public:
             // Prevent them to follow players through the whole instance
             if (uiCheckTimer <= uiDiff)
             {
-                Creature* ionar = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_IONAR));
+                Creature* ionar = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_IONAR));
                 if (ionar && ionar->IsAlive())
                 {
                     if (me->GetDistance(ionar) > DATA_MAX_SPARK_DISTANCE)

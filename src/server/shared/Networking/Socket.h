@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,6 +34,9 @@
 using boost::asio::ip::tcp;
 
 #define READ_BLOCK_SIZE 4096
+#ifdef BOOST_ASIO_HAS_IOCP
+#define TC_SOCKET_USE_IOCP
+#endif
 
 template<class T>
 class Socket : public std::enable_shared_from_this<T>
@@ -47,6 +50,7 @@ public:
 
     virtual ~Socket()
     {
+        _closed = true;
         boost::system::error_code error;
         _socket.close(error);
     }
@@ -58,11 +62,15 @@ public:
         if (!IsOpen())
             return false;
 
-#ifndef BOOST_ASIO_HAS_IOCP
+#ifndef TC_SOCKET_USE_IOCP
+        std::unique_lock<std::mutex> guard(_writeLock);
+        if (!guard)
+            return true;
+
         if (_isWritingAsync || (!_writeBuffer.GetActiveSize() && _writeQueue.empty()))
             return true;
 
-        for (; WriteHandler(boost::system::error_code(), 0);)
+        for (; WriteHandler(guard);)
             ;
 #endif
 
@@ -85,35 +93,16 @@ public:
             return;
 
         _readBuffer.Normalize();
-        _socket.async_read_some(boost::asio::buffer(_readBuffer.GetWritePointer(), READ_BLOCK_SIZE),
+        _readBuffer.EnsureFreeSpace();
+        _socket.async_read_some(boost::asio::buffer(_readBuffer.GetWritePointer(), _readBuffer.GetRemainingSpace()),
             std::bind(&Socket<T>::ReadHandlerInternal, this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-    }
-
-    void ReadData(std::size_t size)
-    {
-        if (!IsOpen())
-            return;
-
-        boost::system::error_code error;
-
-        std::size_t bytesRead = boost::asio::read(_socket, boost::asio::buffer(_readBuffer.GetWritePointer(), size), error);
-
-        _readBuffer.WriteCompleted(bytesRead);
-
-        if (error || bytesRead != size)
-        {
-            TC_LOG_DEBUG("network", "Socket::ReadData: %s errored with: %i (%s)", GetRemoteIpAddress().to_string().c_str(), error.value(),
-                error.message().c_str());
-
-            CloseSocket();
-        }
     }
 
     void QueuePacket(MessageBuffer&& buffer, std::unique_lock<std::mutex>& guard)
     {
         _writeQueue.push(std::move(buffer));
 
-#ifdef BOOST_ASIO_HAS_IOCP
+#ifdef TC_SOCKET_USE_IOCP
         AsyncProcessQueue(guard);
 #else
         (void)guard;
@@ -132,6 +121,8 @@ public:
         if (shutdownError)
             TC_LOG_DEBUG("network", "Socket::CloseSocket: %s errored when shutting down socket: %i (%s)", GetRemoteIpAddress().to_string().c_str(),
                 shutdownError.value(), shutdownError.message().c_str());
+
+        OnClose();
     }
 
     /// Marks the socket for closing after write buffer becomes empty
@@ -140,31 +131,45 @@ public:
     MessageBuffer& GetReadBuffer() { return _readBuffer; }
 
 protected:
+    virtual void OnClose() { }
+
     virtual void ReadHandler() = 0;
 
     bool AsyncProcessQueue(std::unique_lock<std::mutex>&)
     {
         if (_isWritingAsync)
-            return true;
+            return false;
 
         _isWritingAsync = true;
-        
-#ifdef BOOST_ASIO_HAS_IOCP
+
+#ifdef TC_SOCKET_USE_IOCP
         MessageBuffer& buffer = _writeQueue.front();
         _socket.async_write_some(boost::asio::buffer(buffer.GetReadPointer(), buffer.GetActiveSize()), std::bind(&Socket<T>::WriteHandler,
             this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 #else
-        _socket.async_write_some(boost::asio::null_buffers(), std::bind(&Socket<T>::WriteHandler, this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+        _socket.async_write_some(boost::asio::null_buffers(), std::bind(&Socket<T>::WriteHandlerWrapper,
+            this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 #endif
 
-        return true;
+        return false;
+    }
+
+    void SetNoDelay(bool enable)
+    {
+        boost::system::error_code err;
+        _socket.set_option(boost::asio::ip::tcp::no_delay(enable), err);
+        if (err)
+            TC_LOG_DEBUG("network", "Socket::SetNoDelay: failed to set_option(boost::asio::ip::tcp::no_delay) for %s - %d (%s)",
+                GetRemoteIpAddress().to_string().c_str(), err.value(), err.message().c_str());
     }
 
     std::mutex _writeLock;
     std::queue<MessageBuffer> _writeQueue;
-#ifndef BOOST_ASIO_HAS_IOCP
+#ifndef TC_SOCKET_USE_IOCP
     MessageBuffer _writeBuffer;
 #endif
+
+    boost::asio::io_service& io_service() { return _socket.get_io_service(); }
 
 private:
     void ReadHandlerInternal(boost::system::error_code error, size_t transferredBytes)
@@ -179,7 +184,7 @@ private:
         ReadHandler();
     }
 
-#ifdef BOOST_ASIO_HAS_IOCP
+#ifdef TC_SOCKET_USE_IOCP
 
     void WriteHandler(boost::system::error_code error, std::size_t transferedBytes)
     {
@@ -203,12 +208,15 @@ private:
 
 #else
 
-    bool WriteHandler(boost::system::error_code /*error*/, std::size_t /*transferedBytes*/)
+    void WriteHandlerWrapper(boost::system::error_code /*error*/, std::size_t /*transferedBytes*/)
     {
-        std::unique_lock<std::mutex> guard(_writeLock, std::try_to_lock);
-        if (!guard)
-            return false;
+        std::unique_lock<std::mutex> guard(_writeLock);
+        _isWritingAsync = false;
+        WriteHandler(guard);
+    }
 
+    bool WriteHandler(std::unique_lock<std::mutex>& guard)
+    {
         if (!IsOpen())
             return false;
 
@@ -229,7 +237,7 @@ private:
         }
         else if (bytesWritten == 0)
             return false;
-        else if (bytesWritten < bytesToSend) //now n > 0
+        else if (bytesWritten < bytesToSend)
         {
             _writeBuffer.ReadCompleted(bytesWritten);
             _writeBuffer.Normalize();
@@ -245,10 +253,7 @@ private:
     bool HandleQueue(std::unique_lock<std::mutex>& guard)
     {
         if (_writeQueue.empty())
-        {
-            _isWritingAsync = false;
             return false;
-        }
 
         MessageBuffer& queuedMessage = _writeQueue.front();
 
@@ -277,13 +282,7 @@ private:
         }
 
         _writeQueue.pop();
-        if (_writeQueue.empty())
-        {
-            _isWritingAsync = false;
-            return false;
-        }
-
-        return true;
+        return !_writeQueue.empty();
     }
 
 #endif

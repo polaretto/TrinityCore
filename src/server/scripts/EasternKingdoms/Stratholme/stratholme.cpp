@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -117,12 +117,12 @@ public:
 
         void Initialize()
         {
-            Tagger = 0;
+            Tagger.Clear();
             Die_Timer = 5000;
             Tagged = false;
         }
 
-        uint64 Tagger;
+        ObjectGuid Tagger;
         uint32 Die_Timer;
         bool Tagged;
 

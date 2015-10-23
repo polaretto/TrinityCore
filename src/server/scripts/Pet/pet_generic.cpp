@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -41,17 +41,11 @@ class npc_pet_gen_mojo : public CreatureScript
         {
             npc_pet_gen_mojoAI(Creature* creature) : ScriptedAI(creature)
             {
-                Initialize();
-            }
-
-            void Initialize()
-            {
-                _victimGUID = 0;
             }
 
             void Reset() override
             {
-                Initialize();
+                _victimGUID.Clear();
 
                 if (Unit* owner = me->GetOwner())
                     me->GetMotionMaster()->MoveFollow(owner, 0.0f, 0.0f);
@@ -72,7 +66,7 @@ class npc_pet_gen_mojo : public CreatureScript
 
                 Talk(SAY_MOJO, player);
 
-                if (_victimGUID)
+                if (!_victimGUID.IsEmpty())
                     if (Player* victim = ObjectAccessor::GetPlayer(*me, _victimGUID))
                         victim->RemoveAura(SPELL_FEELING_FROGGY);
 
@@ -84,7 +78,7 @@ class npc_pet_gen_mojo : public CreatureScript
             }
 
         private:
-            uint64 _victimGUID;
+            ObjectGuid _victimGUID;
         };
 
         CreatureAI* GetAI(Creature* creature) const override

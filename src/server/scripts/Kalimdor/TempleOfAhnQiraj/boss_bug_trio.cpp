@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -90,7 +90,7 @@ public:
         void JustDied(Unit* /*killer*/) override
         {
             if (instance->GetData(DATA_BUG_TRIO_DEATH) < 2)// Unlootable if death
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
 
             instance->SetData(DATA_BUG_TRIO_DEATH, 1);
         }
@@ -184,7 +184,7 @@ public:
         {
             instance->SetData(DATA_VEM_DEATH, 0);
             if (instance->GetData(DATA_BUG_TRIO_DEATH) < 2)// Unlootable if death
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
             instance->SetData(DATA_BUG_TRIO_DEATH, 1);
         }
 
@@ -278,7 +278,7 @@ public:
         void JustDied(Unit* /*killer*/) override
         {
             if (instance->GetData(DATA_BUG_TRIO_DEATH) < 2)// Unlootable if death
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
             instance->SetData(DATA_BUG_TRIO_DEATH, 1);
 
             for (uint8 i = 0; i < 10; ++i)
@@ -315,11 +315,11 @@ public:
                 switch (urand(0, 2))
                 {
                     case 0:
-                        if (Creature* kri = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_KRI)))
+                        if (Creature* kri = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_KRI)))
                             DoCast(kri, SPELL_HEAL);
                         break;
                     case 1:
-                        if (Creature* vem = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_VEM)))
+                        if (Creature* vem = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_VEM)))
                             DoCast(vem, SPELL_HEAL);
                         break;
                     case 2:

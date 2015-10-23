@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,17 +19,14 @@
 /* ScriptData
 SDName: Tanaris
 SD%Complete: 80
-SDComment: Quest support: 648, 1560, 2954, 4005, 10277, 10279(Special flight path).
+SDComment: Quest support: 648, 10277, 10279(Special flight path).
 SDCategory: Tanaris
 EndScriptData */
 
 /* ContentData
-npc_aquementas
 npc_custodian_of_time
 npc_steward_of_time
-npc_stone_watcher_of_norgannon
 npc_OOX17
-npc_tooga
 EndContentData */
 
 #include "ScriptMgr.h"
@@ -49,7 +46,12 @@ enum Aquementas
     AGGRO_YELL_AQUE     = 0,
 
     SPELL_AQUA_JET      = 13586,
-    SPELL_FROST_SHOCK   = 15089
+    SPELL_FROST_SHOCK   = 15089,
+
+    ITEM_BOOK_OF_AQUOR  = 11169,
+    ITEM_SILVERY_CLAWS  = 11172,
+    ITEM_IRONTREE_HEART = 11173,
+    ITEM_SILVER_TOTEM   = 11522
 };
 
 class npc_aquementas : public CreatureScript
@@ -59,7 +61,7 @@ public:
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return new npc_aquementasAI(creature);
+        return new npc_aquementasAI (creature);
     }
 
     struct npc_aquementasAI : public ScriptedAI
@@ -97,15 +99,15 @@ public:
         {
             Player* player = receiver->ToPlayer();
 
-            if (player && player->HasItemCount(11169, 1, false) &&
-                player->HasItemCount(11172, 11, false) &&
-                player->HasItemCount(11173, 1, false) &&
-                !player->HasItemCount(11522, 1, true))
+            if (player && player->HasItemCount(ITEM_BOOK_OF_AQUOR, 1, false) &&
+                player->HasItemCount(ITEM_SILVERY_CLAWS, 11, false) &&
+                player->HasItemCount(ITEM_IRONTREE_HEART, 1, false) &&
+                !player->HasItemCount(ITEM_SILVER_TOTEM, 1, true))
             {
                 ItemPosCountVec dest;
                 uint8 msg = player->CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, 11522, 1, NULL);
                 if (msg == EQUIP_ERR_OK)
-                    player->StoreNewItem(dest, 11522, 1, true);
+                    player->StoreNewItem(dest, ITEM_SILVER_TOTEM, true);
             }
         }
 
@@ -175,7 +177,10 @@ enum CustodianOfTime
     WHISPER_CUSTODIAN_11    = 10,
     WHISPER_CUSTODIAN_12    = 11,
     WHISPER_CUSTODIAN_13    = 12,
-    WHISPER_CUSTODIAN_14    = 13
+    WHISPER_CUSTODIAN_14    = 13,
+
+    QUEST_CAVERNS_OF_TIME   = 10277,
+    SPELL_QID_10277         = 34883
 };
 
 class npc_custodian_of_time : public CreatureScript
@@ -251,16 +256,15 @@ public:
                         break;
                     case 24:
                         Talk(WHISPER_CUSTODIAN_14, player);
-                        DoCast(player, 34883);
+                        DoCast(player, SPELL_QID_10277);
                         // below here is temporary workaround, to be removed when spell works properly
-                        player->AreaExploredOrEventHappens(10277);
+                        player->AreaExploredOrEventHappens(QUEST_CAVERNS_OF_TIME);
                         break;
                 }
             }
         }
 
         void MoveInLineOfSight(Unit* who) override
-
         {
             if (HasEscortState(STATE_ESCORT_ESCORTING))
                 return;
@@ -300,7 +304,7 @@ class npc_steward_of_time : public CreatureScript
 public:
     npc_steward_of_time() : CreatureScript("npc_steward_of_time") { }
 
-    bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest) override
+    bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest)
     {
         if (quest->GetQuestId() == 10279)                      //Quest: To The Master's Lair
             player->CastSpell(player, 34891, true);               //(Flight through Caverns)
@@ -308,7 +312,7 @@ public:
         return false;
     }
 
-    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
+    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action)
     {
         player->PlayerTalkClass->ClearMenus();
         if (action == GOSSIP_ACTION_INFO_DEF + 1)
@@ -317,7 +321,7 @@ public:
         return true;
     }
 
-    bool OnGossipHello(Player* player, Creature* creature) override
+    bool OnGossipHello(Player* player, Creature* creature)
     {
         if (creature->IsQuestGiver())
             player->PrepareQuestMenu(creature->GetGUID());
@@ -329,70 +333,6 @@ public:
         }
         else
             player->SEND_GOSSIP_MENU(9977, creature->GetGUID());
-
-        return true;
-    }
-
-};
-
-/*######
-## npc_stone_watcher_of_norgannon
-######*/
-
-#define GOSSIP_ITEM_NORGANNON_1     "What function do you serve?"
-#define GOSSIP_ITEM_NORGANNON_2     "What are the Plates of Uldum?"
-#define GOSSIP_ITEM_NORGANNON_3     "Where are the Plates of Uldum?"
-#define GOSSIP_ITEM_NORGANNON_4     "Excuse me? We've been \"reschedueled for visitations\"? What does that mean?!"
-#define GOSSIP_ITEM_NORGANNON_5     "So, what's inside Uldum?"
-#define GOSSIP_ITEM_NORGANNON_6     "I will return when i have the Plates of Uldum."
-
-class npc_stone_watcher_of_norgannon : public CreatureScript
-{
-public:
-    npc_stone_watcher_of_norgannon() : CreatureScript("npc_stone_watcher_of_norgannon") { }
-
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
-    {
-        player->PlayerTalkClass->ClearMenus();
-        switch (action)
-        {
-            case GOSSIP_ACTION_INFO_DEF:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_2, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-                player->SEND_GOSSIP_MENU(1675, creature->GetGUID());
-                break;
-            case GOSSIP_ACTION_INFO_DEF+1:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_3, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
-                player->SEND_GOSSIP_MENU(1676, creature->GetGUID());
-                break;
-            case GOSSIP_ACTION_INFO_DEF+2:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_4, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+3);
-                player->SEND_GOSSIP_MENU(1677, creature->GetGUID());
-                break;
-            case GOSSIP_ACTION_INFO_DEF+3:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_5, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+4);
-                player->SEND_GOSSIP_MENU(1678, creature->GetGUID());
-                break;
-            case GOSSIP_ACTION_INFO_DEF+4:
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_6, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+5);
-                player->SEND_GOSSIP_MENU(1679, creature->GetGUID());
-                break;
-            case GOSSIP_ACTION_INFO_DEF+5:
-                player->CLOSE_GOSSIP_MENU();
-                player->AreaExploredOrEventHappens(2954);
-                break;
-        }
-        return true;
-    }
-
-    bool OnGossipHello(Player* player, Creature* creature) override
-    {
-        if (creature->IsQuestGiver())
-            player->PrepareQuestMenu(creature->GetGUID());
-
-        if (player->GetQuestStatus(2954) == QUEST_STATUS_INCOMPLETE)
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_NORGANNON_1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
-
-        player->SEND_GOSSIP_MENU(1674, creature->GetGUID());
 
         return true;
     }
@@ -546,14 +486,14 @@ public:
             PostEventTimer = 1000;
             PhasePostEvent = 0;
 
-            TortaGUID = 0;
+            TortaGUID.Clear();
         }
 
         uint32 CheckSpeechTimer;
         uint32 PostEventTimer;
         uint32 PhasePostEvent;
 
-        uint64 TortaGUID;
+        ObjectGuid TortaGUID;
 
         void Reset() override
         {
@@ -561,7 +501,6 @@ public:
         }
 
         void MoveInLineOfSight(Unit* who) override
-
         {
             FollowerAI::MoveInLineOfSight(who);
 
@@ -662,10 +601,7 @@ public:
 
 void AddSC_tanaris()
 {
-    new npc_aquementas();
     new npc_custodian_of_time();
     new npc_steward_of_time();
-    new npc_stone_watcher_of_norgannon();
     new npc_OOX17();
-    new npc_tooga();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,7 +17,6 @@
 
 #include "BattlefieldMgr.h"
 #include "BattlefieldWG.h"
-#include "ObjectMgr.h"
 #include "Player.h"
 
 BattlefieldMgr::BattlefieldMgr()
@@ -81,7 +80,7 @@ void BattlefieldMgr::HandlePlayerEnterZone(Player* player, uint32 zoneId)
         return;
 
     bf->HandlePlayerEnterZone(player, zoneId);
-    TC_LOG_DEBUG("bg.battlefield", "Player %u entered battlefield id %u", player->GetGUIDLow(), bf->GetTypeId());
+    TC_LOG_DEBUG("bg.battlefield", "%s entered battlefield id %u", player->GetGUID().ToString().c_str(), bf->GetTypeId());
 }
 
 void BattlefieldMgr::HandlePlayerLeaveZone(Player* player, uint32 zoneId)
@@ -95,7 +94,7 @@ void BattlefieldMgr::HandlePlayerLeaveZone(Player* player, uint32 zoneId)
         return;
 
     itr->second->HandlePlayerLeaveZone(player, zoneId);
-    TC_LOG_DEBUG("bg.battlefield", "Player %u left battlefield id %u", player->GetGUIDLow(), itr->second->GetTypeId());
+    TC_LOG_DEBUG("bg.battlefield", "Player %s left battlefield id %u", player->GetGUID().ToString().c_str(), itr->second->GetTypeId());
 }
 
 Battlefield* BattlefieldMgr::GetBattlefieldToZoneId(uint32 zoneId)
@@ -120,6 +119,15 @@ Battlefield* BattlefieldMgr::GetBattlefieldByBattleId(uint32 battleId)
         if ((*itr)->GetBattleId() == battleId)
             return *itr;
     }
+    return NULL;
+}
+
+Battlefield* BattlefieldMgr::GetBattlefieldByGUID(ObjectGuid guid)
+{
+    for (BattlefieldSet::iterator itr = _battlefieldSet.begin(); itr != _battlefieldSet.end(); ++itr)
+        if ((*itr)->GetGUID() == guid)
+            return *itr;
+
     return NULL;
 }
 

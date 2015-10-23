@@ -17,9 +17,10 @@
  */
 
 #include "MoveSpline.h"
-#include <sstream>
 #include "Log.h"
 #include "Creature.h"
+
+#include <sstream>
 
 namespace Movement{
 
@@ -52,7 +53,7 @@ Location MoveSpline::ComputePosition() const
     }
     else
     {
-        if (!splineflags.hasFlag(MoveSplineFlag::OrientationFixed | MoveSplineFlag::Falling))
+        if (!splineflags.hasFlag(MoveSplineFlag::OrientationFixed | MoveSplineFlag::Falling | MoveSplineFlag::Unknown0))
         {
             Vector3 hermite;
             spline.evaluate_derivative(point_Idx, u, hermite);
@@ -201,7 +202,7 @@ bool MoveSplineInitArgs::Validate(Unit* unit) const
 #define CHECK(exp) \
     if (!(exp))\
     {\
-        TC_LOG_ERROR("misc", "MoveSplineInitArgs::Validate: expression '%s' failed for GUID: %u Entry: %u", #exp, unit->GetTypeId() == TYPEID_PLAYER ? unit->GetGUIDLow() : unit->ToCreature()->GetDBTableGUIDLow(), unit->GetEntry());\
+        TC_LOG_ERROR("misc", "MoveSplineInitArgs::Validate: expression '%s' failed for %s Entry: %u", #exp, unit->GetGUID().ToString().c_str(), unit->GetEntry());\
         return false;\
     }
     CHECK(path.size() > 1);
@@ -216,7 +217,7 @@ bool MoveSplineInitArgs::Validate(Unit* unit) const
 // each vertex offset packed into 11 bytes
 bool MoveSplineInitArgs::_checkPathBounds() const
 {
-    if (!(flags & MoveSplineFlag::Mask_CatmullRom) && path.size() > 2)
+    if (!(flags & MoveSplineFlag::Catmullrom) && path.size() > 2)
     {
         enum{
             MAX_OFFSET = (1 << 11) / 2
@@ -289,7 +290,7 @@ std::string MoveSpline::ToString() const
     if (splineflags.final_angle)
         str << "facing  angle: " << facing.angle;
     else if (splineflags.final_target)
-        str << "facing target: " << facing.target;
+        str << "facing target: " << facing.target.ToString();
     else if (splineflags.final_point)
         str << "facing  point: " << facing.f.x << " " << facing.f.y << " " << facing.f.z;
     str << std::endl;

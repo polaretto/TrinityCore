@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -50,6 +50,7 @@ enum Spells
     SPELL_HEAT                  = 65667,
     SPELL_MOLTEN                = 62373,
     SPELL_BRITTLE               = 62382,
+    SPELL_BRITTLE_25            = 67114,
     SPELL_SHATTER               = 62383,
     SPELL_GROUND                = 62548,
 };
@@ -116,15 +117,14 @@ class boss_ignis : public CreatureScript
 
         struct boss_ignis_AI : public BossAI
         {
-            boss_ignis_AI(Creature* creature) : BossAI(creature, BOSS_IGNIS), _vehicle(me->GetVehicleKit())
+            boss_ignis_AI(Creature* creature) : BossAI(creature, BOSS_IGNIS)
             {
                 Initialize();
-                ASSERT(_vehicle);
             }
 
             void Initialize()
             {
-                _slagPotGUID = 0;
+                _slagPotGUID.Clear();
                 _shattered = false;
                 _firstConstructKill = 0;
             }
@@ -132,7 +132,7 @@ class boss_ignis : public CreatureScript
             void Reset() override
             {
                 _Reset();
-                if (_vehicle)
+                if (Vehicle* _vehicle = me->GetVehicleKit())
                     _vehicle->RemoveAllPassengers();
 
                 instance->DoStopTimedAchievement(ACHIEVEMENT_TIMED_TYPE_EVENT, ACHIEVEMENT_IGNIS_START_EVENT);
@@ -219,7 +219,7 @@ class boss_ignis : public CreatureScript
                             events.ScheduleEvent(EVENT_JET, urand(35000, 40000));
                             break;
                         case EVENT_SLAG_POT:
-                            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100, true))
+                            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 1, 100, true))
                             {
                                 Talk(SAY_SLAG_POT);
                                 _slagPotGUID = target->GetGUID();
@@ -240,7 +240,7 @@ class boss_ignis : public CreatureScript
                         case EVENT_CHANGE_POT:
                             if (Unit* slagPotTarget = ObjectAccessor::GetUnit(*me, _slagPotGUID))
                             {
-                                slagPotTarget->AddAura(SPELL_SLAG_POT, slagPotTarget);
+                                DoCast(slagPotTarget, SPELL_SLAG_POT, true);
                                 slagPotTarget->EnterVehicle(me, 1);
                                 events.CancelEvent(EVENT_CHANGE_POT);
                                 events.ScheduleEvent(EVENT_END_POT, 10000);
@@ -251,7 +251,7 @@ class boss_ignis : public CreatureScript
                             {
                                 slagPotTarget->ExitVehicle();
                                 slagPotTarget = NULL;
-                                _slagPotGUID = 0;
+                                _slagPotGUID.Clear();
                                 events.CancelEvent(EVENT_END_POT);
                             }
                             break;
@@ -282,8 +282,7 @@ class boss_ignis : public CreatureScript
             }
 
         private:
-            uint64 _slagPotGUID;
-            Vehicle* _vehicle;
+            ObjectGuid _slagPotGUID;
             time_t _firstConstructKill;
             bool _shattered;
 
@@ -320,10 +319,10 @@ class npc_iron_construct : public CreatureScript
 
             void DamageTaken(Unit* /*attacker*/, uint32& damage) override
             {
-                if (me->HasAura(SPELL_BRITTLE) && damage >= 5000)
+                if (me->HasAura(RAID_MODE(SPELL_BRITTLE, SPELL_BRITTLE_25)) && damage >= 5000)
                 {
                     DoCast(SPELL_SHATTER);
-                    if (Creature* ignis = ObjectAccessor::GetCreature(*me, _instance->GetData64(BOSS_IGNIS)))
+                    if (Creature* ignis = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(BOSS_IGNIS)))
                         if (ignis->AI())
                             ignis->AI()->DoAction(ACTION_REMOVE_BUFF);
 
@@ -385,7 +384,7 @@ class npc_scorch_ground : public CreatureScript
             void Initialize()
             {
                 _heat = false;
-                _constructGUID = 0;
+                _constructGUID.Clear();
                 _heatTimer = 0;
             }
 
@@ -429,7 +428,7 @@ class npc_scorch_ground : public CreatureScript
             }
 
         private:
-            uint64 _constructGUID;
+            ObjectGuid _constructGUID;
             uint32 _heatTimer;
             bool _heat;
         };
@@ -457,14 +456,13 @@ class spell_ignis_slag_pot : public SpellScriptLoader
                 return true;
             }
 
-            void HandleEffectPeriodic(AuraEffect const* aurEff)
+            void HandleEffectPeriodic(AuraEffect const* /*aurEff*/)
             {
-                Unit* aurEffCaster = aurEff->GetCaster();
-                if (!aurEffCaster)
-                    return;
-
-                Unit* target = GetTarget();
-                aurEffCaster->CastSpell(target, SPELL_SLAG_POT_DAMAGE, true);
+                if (Unit* caster = GetCaster())
+                {
+                    Unit* target = GetTarget();
+                    caster->CastSpell(target, SPELL_SLAG_POT_DAMAGE, true);
+                }
             }
 
             void OnRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)

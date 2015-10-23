@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -63,17 +63,25 @@ public:
 
     struct npc_doom_blossomAI : public ScriptedAI
     {
-        npc_doom_blossomAI(Creature* creature) : ScriptedAI(creature) { }
+        npc_doom_blossomAI(Creature* creature) : ScriptedAI(creature)
+        {
+            Initialize();
+        }
 
-        uint32 CheckTeronTimer;
-        uint32 ShadowBoltTimer;
-        uint64 TeronGUID;
-
-        void Reset() override
+        void Initialize()
         {
             CheckTeronTimer = 5000;
             ShadowBoltTimer = 12000;
-            TeronGUID = 0;
+            TeronGUID.Clear();
+        }
+
+        uint32 CheckTeronTimer;
+        uint32 ShadowBoltTimer;
+        ObjectGuid TeronGUID;
+
+        void Reset() override
+        {
+            Initialize();
         }
 
         void EnterCombat(Unit* /*who*/) override { }
@@ -91,7 +99,7 @@ public:
         {
             if (CheckTeronTimer <= diff)
             {
-                if (TeronGUID)
+                if (!TeronGUID.IsEmpty())
                 {
                     DoZoneInCombat();
 
@@ -113,7 +121,7 @@ public:
             return;
         }
 
-        void SetTeronGUID(uint64 guid)
+        void SetTeronGUID(ObjectGuid guid)
         {
             TeronGUID = guid;
         }
@@ -132,21 +140,29 @@ public:
 
     struct npc_shadowy_constructAI : public ScriptedAI
     {
-        npc_shadowy_constructAI(Creature* creature) : ScriptedAI(creature) { }
+        npc_shadowy_constructAI(Creature* creature) : ScriptedAI(creature)
+        {
+            Initialize();
+        }
 
-        uint64 GhostGUID;
-        uint64 TeronGUID;
+        void Initialize()
+        {
+            GhostGUID.Clear();
+            TeronGUID.Clear();
+
+            CheckPlayerTimer = 2000;
+            CheckTeronTimer = 5000;
+        }
+
+        ObjectGuid GhostGUID;
+        ObjectGuid TeronGUID;
 
         uint32 CheckPlayerTimer;
         uint32 CheckTeronTimer;
 
         void Reset() override
         {
-            GhostGUID = 0;
-            TeronGUID = 0;
-
-            CheckPlayerTimer = 2000;
-            CheckTeronTimer = 5000;
+            Initialize();
         }
 
         void EnterCombat(Unit* /*who*/) override { }
@@ -224,7 +240,23 @@ public:
     {
         boss_teron_gorefiendAI(Creature* creature) : ScriptedAI(creature)
         {
+            Initialize();
             instance = creature->GetInstanceScript();
+        }
+
+        void Initialize()
+        {
+            IncinerateTimer = urand(20000, 31000);
+            SummonDoomBlossomTimer = 12000;
+            EnrageTimer = 600000;
+            CrushingShadowsTimer = 22000;
+            SummonShadowsTimer = 60000;
+            RandomYellTimer = 50000;
+
+            AggroTimer = 20000;
+            AggroTargetGUID.Clear();
+            Intro = false;
+            Done = false;
         }
 
         InstanceScript* instance;
@@ -233,13 +265,12 @@ public:
         uint32 SummonDoomBlossomTimer;
         uint32 EnrageTimer;
         uint32 CrushingShadowsTimer;
-        uint32 ShadowOfDeathTimer;
         uint32 SummonShadowsTimer;
         uint32 RandomYellTimer;
         uint32 AggroTimer;
 
-        uint64 AggroTargetGUID;
-        uint64 GhostGUID;                                       // Player that gets killed by Shadow of Death and gets turned into a ghost
+        ObjectGuid AggroTargetGUID;
+        ObjectGuid GhostGUID;                                       // Player that gets killed by Shadow of Death and gets turned into a ghost
 
         bool Intro;
         bool Done;
@@ -248,21 +279,11 @@ public:
         {
             instance->SetBossState(DATA_TERON_GOREFIEND, NOT_STARTED);
 
-            IncinerateTimer = urand(20000, 31000);
-            SummonDoomBlossomTimer = 12000;
-            EnrageTimer = 600000;
-            CrushingShadowsTimer = 22000;
-            SummonShadowsTimer = 60000;
-            RandomYellTimer = 50000;
+            Initialize();
 
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             // Start off unattackable so that the intro is done properly
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-
-            AggroTimer = 20000;
-            AggroTargetGUID = 0;
-            Intro = false;
-            Done = false;
         }
 
         void EnterCombat(Unit* /*who*/) override { }
@@ -343,7 +364,7 @@ public:
             /************************************************************************/
 
             Unit* ghost = NULL;
-            if (GhostGUID)
+            if (!GhostGUID.IsEmpty())
                 ghost = ObjectAccessor::GetUnit(*me, GhostGUID);
             if (ghost && ghost->IsAlive() && ghost->HasAura(SPELL_SHADOW_OF_DEATH))
             {
@@ -389,7 +410,7 @@ public:
                     Talk(SAY_AGGRO);
                     me->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_STATE_NONE);
                     Done = true;
-                    if (AggroTargetGUID)
+                    if (!AggroTargetGUID.IsEmpty())
                     {
                         Unit* unit = ObjectAccessor::GetUnit(*me, AggroTargetGUID);
                         if (unit)

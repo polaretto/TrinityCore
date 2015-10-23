@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -88,7 +88,6 @@ class boss_festergut : public CreatureScript
             {
                 _maxInoculatedStack = 0;
                 _inhaleCounter = 0;
-                _gasDummyGUID = 0;
             }
 
             void Reset() override
@@ -126,7 +125,7 @@ class boss_festergut : public CreatureScript
                 Talk(SAY_AGGRO);
                 if (Creature* gasDummy = me->FindNearestCreature(NPC_GAS_DUMMY, 100.0f, true))
                     _gasDummyGUID = gasDummy->GetGUID();
-                if (Creature* professor = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PROFESSOR_PUTRICIDE)))
+                if (Creature* professor = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PROFESSOR_PUTRICIDE)))
                     professor->AI()->DoAction(ACTION_FESTERGUT_COMBAT);
                 DoZoneInCombat();
             }
@@ -135,7 +134,7 @@ class boss_festergut : public CreatureScript
             {
                 _JustDied();
                 Talk(SAY_DEATH);
-                if (Creature* professor = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PROFESSOR_PUTRICIDE)))
+                if (Creature* professor = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PROFESSOR_PUTRICIDE)))
                     professor->AI()->DoAction(ACTION_FESTERGUT_DEATH);
 
                 RemoveBlight();
@@ -150,7 +149,7 @@ class boss_festergut : public CreatureScript
             void EnterEvadeMode() override
             {
                 ScriptedAI::EnterEvadeMode();
-                if (Creature* professor = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PROFESSOR_PUTRICIDE)))
+                if (Creature* professor = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PROFESSOR_PUTRICIDE)))
                     professor->AI()->EnterEvadeMode();
             }
 
@@ -189,7 +188,7 @@ class boss_festergut : public CreatureScript
                                 Talk(SAY_PUNGENT_BLIGHT);
                                 DoCast(me, SPELL_PUNGENT_BLIGHT);
                                 _inhaleCounter = 0;
-                                if (Creature* professor = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PROFESSOR_PUTRICIDE)))
+                                if (Creature* professor = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PROFESSOR_PUTRICIDE)))
                                     professor->AI()->DoAction(ACTION_FESTERGUT_GAS);
                                 events.RescheduleEvent(EVENT_GAS_SPORE, urand(20000, 25000));
                             }
@@ -279,7 +278,7 @@ class boss_festergut : public CreatureScript
             }
 
         private:
-            uint64 _gasDummyGUID;
+            ObjectGuid _gasDummyGUID;
             uint32 _maxInoculatedStack;
             uint32 _inhaleCounter;
         };
@@ -346,7 +345,7 @@ class npc_stinky_icc : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
-                if (Creature* festergut = ObjectAccessor::GetCreature(*me, _instance->GetData64(DATA_FESTERGUT)))
+                if (Creature* festergut = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_FESTERGUT)))
                     if (festergut->IsAlive())
                         festergut->AI()->Talk(SAY_STINKY_DEAD);
             }
@@ -378,11 +377,7 @@ class spell_festergut_pungent_blight : public SpellScriptLoader
 
             void HandleScript(SpellEffIndex /*effIndex*/)
             {
-                // Get Inhaled Blight id for our difficulty
-                uint32 blightId = sSpellMgr->GetSpellIdForDifficulty(uint32(GetEffectValue()), GetCaster());
-
-                // ...and remove it
-                GetCaster()->RemoveAurasDueToSpell(blightId);
+                GetCaster()->RemoveAurasDueToSpell(uint32(GetEffectValue()));
                 GetCaster()->ToCreature()->AI()->Talk(EMOTE_PUNGENT_BLIGHT);
             }
 
@@ -456,7 +451,7 @@ class spell_festergut_blighted_spores : public SpellScriptLoader
             {
                 GetTarget()->CastSpell(GetTarget(), SPELL_INOCULATED, true);
                 if (InstanceScript* instance = GetTarget()->GetInstanceScript())
-                    if (Creature* festergut = ObjectAccessor::GetCreature(*GetTarget(), instance->GetData64(DATA_FESTERGUT)))
+                    if (Creature* festergut = ObjectAccessor::GetCreature(*GetTarget(), instance->GetGuidData(DATA_FESTERGUT)))
                         festergut->AI()->SetData(DATA_INOCULATED_STACK, GetStackAmount());
 
                 HandleResidue();
@@ -471,21 +466,11 @@ class spell_festergut_blighted_spores : public SpellScriptLoader
                 if (target->HasAura(SPELL_ORANGE_BLIGHT_RESIDUE))
                     return;
 
-                if (target->GetMap() && !target->GetMap()->Is25ManRaid())
-                {
-                    if (target->GetQuestStatus(QUEST_RESIDUE_RENDEZVOUS_10) != QUEST_STATUS_INCOMPLETE)
-                        return;
+                uint32 questId = target->GetMap()->Is25ManRaid() ? QUEST_RESIDUE_RENDEZVOUS_25 : QUEST_RESIDUE_RENDEZVOUS_10;
+                if (target->GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE)
+                    return;
 
-                    target->CastSpell(target, SPELL_ORANGE_BLIGHT_RESIDUE, TRIGGERED_FULL_MASK);
-                }
-
-                if (target->GetMap() && target->GetMap()->Is25ManRaid())
-                {
-                    if (target->GetQuestStatus(QUEST_RESIDUE_RENDEZVOUS_25) != QUEST_STATUS_INCOMPLETE)
-                        return;
-
-                    target->CastSpell(target, SPELL_ORANGE_BLIGHT_RESIDUE, TRIGGERED_FULL_MASK);
-                }
+                target->CastSpell(target, SPELL_ORANGE_BLIGHT_RESIDUE, TRIGGERED_FULL_MASK);
             }
 
             void Register() override

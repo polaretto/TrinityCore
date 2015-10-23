@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@ go_ethereum_stasis
 go_sacred_fire_of_life
 go_shrine_of_the_birds
 go_southfury_moonstone
-go_field_repair_bot_74A
 go_orb_of_command
 go_resonite_cask
 go_tablet_of_madness
@@ -41,8 +40,6 @@ go_dragonflayer_cage
 go_tadpole_cage
 go_amberpine_outhouse
 go_hive_pod
-go_gjalerbron_cage
-go_large_gjalerbron_cage
 go_veil_skith_cage
 EndContentData */
 
@@ -88,24 +85,6 @@ public:
     {
         if (player->HasSkill(SKILL_TAILORING) && player->GetBaseSkillValue(SKILL_TAILORING) >= 280 && !player->HasSpell(26086))
             player->CastSpell(player, 26095, false);
-
-        return true;
-    }
-};
-
-/*######
-## go_field_repair_bot_74A
-######*/
-
-class go_field_repair_bot_74A : public GameObjectScript
-{
-public:
-    go_field_repair_bot_74A() : GameObjectScript("go_field_repair_bot_74A") { }
-
-    bool OnGossipHello(Player* player, GameObject* /*go*/) override
-    {
-        if (player->HasSkill(SKILL_ENGINEERING) && player->GetBaseSkillValue(SKILL_ENGINEERING) >= 300 && !player->HasSpell(22704))
-            player->CastSpell(player, 22864, false);
 
         return true;
     }
@@ -255,7 +234,7 @@ public:
                 {
                     uint32 Spell = 0;
 
-                    switch (pFaction->faction)
+                    switch (pFaction->Faction)
                     {
                         case 1011: Spell = SPELL_REP_LC; break;
                         case 935: Spell = SPELL_REP_SHAT; break;
@@ -770,7 +749,7 @@ public:
             return false;
 
         pPrisoner->DisappearAndDie();
-        player->KilledMonsterCredit(NPC_EBON_BLADE_PRISONER_HUMAN, 0);
+        player->KilledMonsterCredit(NPC_EBON_BLADE_PRISONER_HUMAN);
         switch (pPrisoner->GetEntry())
         {
             case NPC_EBON_BLADE_PRISONER_HUMAN:
@@ -843,23 +822,6 @@ public:
 ## go_soulwell
 ######*/
 
-enum SoulWellData
-{
-    GO_SOUL_WELL_R1                     = 181621,
-    GO_SOUL_WELL_R2                     = 193169,
-
-    SPELL_IMPROVED_HEALTH_STONE_R1      = 18692,
-    SPELL_IMPROVED_HEALTH_STONE_R2      = 18693,
-
-    SPELL_CREATE_MASTER_HEALTH_STONE_R0 = 34130,
-    SPELL_CREATE_MASTER_HEALTH_STONE_R1 = 34149,
-    SPELL_CREATE_MASTER_HEALTH_STONE_R2 = 34150,
-
-    SPELL_CREATE_FEL_HEALTH_STONE_R0    = 58890,
-    SPELL_CREATE_FEL_HEALTH_STONE_R1    = 58896,
-    SPELL_CREATE_FEL_HEALTH_STONE_R2    = 58898,
-};
-
 class go_soulwell : public GameObjectScript
 {
     public:
@@ -869,39 +831,6 @@ class go_soulwell : public GameObjectScript
         {
             go_soulwellAI(GameObject* go) : GameObjectAI(go)
             {
-                _stoneSpell = 0;
-                _stoneId = 0;
-                switch (go->GetEntry())
-                {
-                    case GO_SOUL_WELL_R1:
-                        _stoneSpell = SPELL_CREATE_MASTER_HEALTH_STONE_R0;
-                        if (Unit* owner = go->GetOwner())
-                        {
-                            if (owner->HasAura(SPELL_IMPROVED_HEALTH_STONE_R1))
-                                _stoneSpell = SPELL_CREATE_MASTER_HEALTH_STONE_R1;
-                            else if (owner->HasAura(SPELL_CREATE_MASTER_HEALTH_STONE_R2))
-                                _stoneSpell = SPELL_CREATE_MASTER_HEALTH_STONE_R2;
-                        }
-                        break;
-                    case GO_SOUL_WELL_R2:
-                        _stoneSpell = SPELL_CREATE_FEL_HEALTH_STONE_R0;
-                        if (Unit* owner = go->GetOwner())
-                        {
-                            if (owner->HasAura(SPELL_IMPROVED_HEALTH_STONE_R1))
-                                _stoneSpell = SPELL_CREATE_FEL_HEALTH_STONE_R1;
-                            else if (owner->HasAura(SPELL_CREATE_MASTER_HEALTH_STONE_R2))
-                                _stoneSpell = SPELL_CREATE_FEL_HEALTH_STONE_R2;
-                        }
-                        break;
-                }
-                if (_stoneSpell == 0) // Should never happen
-                    return;
-
-                SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(_stoneSpell);
-                if (!spellInfo)
-                    return;
-
-                _stoneId = spellInfo->Effects[EFFECT_0].ItemType;
             }
 
             /// Due to the fact that this GameObject triggers CMSG_GAMEOBJECT_USE
@@ -911,31 +840,10 @@ class go_soulwell : public GameObjectScript
             bool GossipHello(Player* player) override
             {
                 Unit* owner = go->GetOwner();
-                if (_stoneSpell == 0 || _stoneId == 0)
-                    return true;
-
                 if (!owner || owner->GetTypeId() != TYPEID_PLAYER || !player->IsInSameRaidWith(owner->ToPlayer()))
                     return true;
-
-                // Don't try to add a stone if we already have one.
-                if (player->HasItemCount(_stoneId))
-                {
-                    if (SpellInfo const* spell = sSpellMgr->GetSpellInfo(_stoneSpell))
-                        Spell::SendCastResult(player, spell, 0, SPELL_FAILED_TOO_MANY_OF_ITEM);
-                    return true;
-                }
-
-                owner->CastSpell(player, _stoneSpell, true);
-                // Item has to actually be created to remove a charge on the well.
-                if (player->HasItemCount(_stoneId))
-                    go->AddUse();
-
                 return false;
             }
-
-        private:
-            uint32 _stoneSpell;
-            uint32 _stoneId;
         };
 
         GameObjectAI* GetAI(GameObject* go) const override
@@ -988,7 +896,7 @@ public:
         if (qInfo)
         {
             /// @todo prisoner should help player for a short period of time
-            player->KilledMonsterCredit(qInfo->RequiredNpcOrGo[0], 0);
+            player->KilledMonsterCredit(qInfo->Objectives[0].ObjectID);
             pPrisoner->DisappearAndDie();
         }
         return true;
@@ -1020,7 +928,7 @@ public:
             if (pTadpole)
             {
                 pTadpole->DisappearAndDie();
-                player->KilledMonsterCredit(NPC_WINTERFIN_TADPOLE, 0);
+                player->KilledMonsterCredit(NPC_WINTERFIN_TADPOLE);
                 //FIX: Summon minion tadpole
             }
         }
@@ -1129,69 +1037,6 @@ class go_massive_seaforium_charge : public GameObjectScript
         }
 };
 
-/*######
-## go_gjalerbron_cage
-######*/
-
-enum OfKeysAndCages
-{
-    QUEST_ALLIANCE_OF_KEYS_AND_CAGES    = 11231,
-    QUEST_HORDE_OF_KEYS_AND_CAGES       = 11265,
-    NPC_GJALERBRON_PRISONER             = 24035,
-    SAY_FREE                            = 0,
-};
-
-class go_gjalerbron_cage : public GameObjectScript
-{
-    public:
-        go_gjalerbron_cage() : GameObjectScript("go_gjalerbron_cage") { }
-
-        bool OnGossipHello(Player* player, GameObject* go) override
-        {
-            go->UseDoorOrButton();
-            if ((player->GetTeamId() == TEAM_ALLIANCE && player->GetQuestStatus(QUEST_ALLIANCE_OF_KEYS_AND_CAGES) == QUEST_STATUS_INCOMPLETE) ||
-                (player->GetTeamId() == TEAM_HORDE && player->GetQuestStatus(QUEST_HORDE_OF_KEYS_AND_CAGES) == QUEST_STATUS_INCOMPLETE))
-            {
-                if (Creature* prisoner = go->FindNearestCreature(NPC_GJALERBRON_PRISONER, 5.0f))
-                {
-                    player->KilledMonsterCredit(NPC_GJALERBRON_PRISONER, 0);
-
-                    prisoner->AI()->Talk(SAY_FREE);
-                    prisoner->DespawnOrUnsummon(6000);
-                }
-            }
-            return true;
-        }
-};
-
-/*########
-## go_large_gjalerbron_cage
-#####*/
-
-class go_large_gjalerbron_cage : public GameObjectScript
-{
-    public:
-        go_large_gjalerbron_cage() : GameObjectScript("go_large_gjalerbron_cage") { }
-
-        bool OnGossipHello(Player* player, GameObject* go) override
-        {
-            go->UseDoorOrButton();
-            if ((player->GetTeamId() == TEAM_ALLIANCE && player->GetQuestStatus(QUEST_ALLIANCE_OF_KEYS_AND_CAGES) == QUEST_STATUS_INCOMPLETE) ||
-                (player->GetTeamId() == TEAM_HORDE && player->GetQuestStatus(QUEST_HORDE_OF_KEYS_AND_CAGES) == QUEST_STATUS_INCOMPLETE))
-            {
-                std::list<Creature*> prisonerList;
-                GetCreatureListWithEntryInGrid(prisonerList, go, NPC_GJALERBRON_PRISONER, INTERACTION_DISTANCE);
-                for (std::list<Creature*>::const_iterator itr = prisonerList.begin(); itr != prisonerList.end(); ++itr)
-                {
-                    player->KilledMonsterCredit(NPC_GJALERBRON_PRISONER, (*itr)->GetGUID());
-                    (*itr)->DespawnOrUnsummon(6000);
-                    (*itr)->AI()->Talk(SAY_FREE);
-                }
-            }
-            return false;
-        }
-};
-
 /*########
 #### go_veil_skith_cage
 #####*/
@@ -1284,7 +1129,6 @@ void AddSC_go_scripts()
 {
     new go_cat_figurine();
     new go_barov_journal();
-    new go_field_repair_bot_74A();
     new go_gilded_brazier();
     new go_orb_of_command();
     new go_shrine_of_the_birds();
@@ -1313,8 +1157,6 @@ void AddSC_go_scripts()
     new go_amberpine_outhouse();
     new go_hive_pod();
     new go_massive_seaforium_charge();
-    new go_gjalerbron_cage();
-    new go_large_gjalerbron_cage();
     new go_veil_skith_cage();
     new go_frostblade_shrine();
     new go_midsummer_bonfire();

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -115,7 +115,7 @@ public:
 
         void Initialize()
         {
-            SathGUID = 0;
+            SathGUID.Clear();
             ArcaneBuffetTimer = 8000;
             FrostBreathTimer = 15000;
             WildMagicTimer = 10000;
@@ -148,11 +148,11 @@ public:
         bool isBanished;
         bool bJustReset;
 
-        uint64 SathGUID;
+        ObjectGuid SathGUID;
 
         void Reset() override
         {
-            SathGUID = instance->GetData64(DATA_SATHROVARR);
+            SathGUID = instance->GetGuidData(DATA_SATHROVARR);
             instance->SetBossState(DATA_KALECGOS, NOT_STARTED);
 
             if (Creature* Sath = ObjectAccessor::GetCreature(*me, SathGUID))
@@ -456,7 +456,7 @@ public:
         uint32 YellTimer;
         uint32 YellSequence;
 
-        uint64 SathGUID;
+        ObjectGuid SathGUID;
 
         bool isEnraged; // if demon is enraged
 
@@ -464,7 +464,6 @@ public:
         {
             Initialize();
             instance = creature->GetInstanceScript();
-            SathGUID = 0;
         }
 
         void Initialize()
@@ -479,7 +478,7 @@ public:
 
         void Reset() override
         {
-            SathGUID = instance->GetData64(DATA_SATHROVARR);
+            SathGUID = instance->GetGuidData(DATA_SATHROVARR);
 
             Initialize();
         }
@@ -552,13 +551,9 @@ public:
 
     bool OnGossipHello(Player* player, GameObject* go) override
     {
-        Map* map = go->GetMap();
-        if (!map->IsDungeon())
-            return true;
-
 #if MAX_PLAYERS_IN_SPECTRAL_REALM > 0
         uint8 SpectralPlayers = 0;
-        Map::PlayerList const &PlayerList = map->GetPlayers();
+        Map::PlayerList const &PlayerList = go->GetMap()->GetPlayers();
         for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
         {
             if (i->GetSource() && i->GetSource()->GetPositionZ() < DEMON_REALM_Z + 5)
@@ -570,6 +565,8 @@ public:
             player->GetSession()->SendNotification(GO_FAILED);
             return true;
         }
+#else
+        (void)go;
 #endif
 
         player->CastSpell(player, SPELL_TELEPORT_SPECTRAL, true);
@@ -593,8 +590,6 @@ public:
         {
             Initialize();
             instance = creature->GetInstanceScript();
-            KalecGUID = 0;
-            KalecgosGUID = 0;
         }
 
         void Initialize()
@@ -616,8 +611,8 @@ public:
         uint32 CheckTimer;
         uint32 ResetThreat;
 
-        uint64 KalecGUID;
-        uint64 KalecgosGUID;
+        ObjectGuid KalecGUID;
+        ObjectGuid KalecgosGUID;
 
         bool isEnraged;
         bool isBanished;
@@ -626,13 +621,13 @@ public:
         {
             me->SetFullHealth();//dunno why it does not resets health at evade..
             me->setActive(true);
-            KalecgosGUID = instance->GetData64(DATA_KALECGOS_DRAGON);
+            KalecgosGUID = instance->GetGuidData(DATA_KALECGOS_DRAGON);
             instance->SetBossState(DATA_KALECGOS, NOT_STARTED);
-            if (KalecGUID)
+            if (!KalecGUID.IsEmpty())
             {
                 if (Creature* Kalec = ObjectAccessor::GetCreature(*me, KalecGUID))
                     Kalec->setDeathState(JUST_DIED);
-                KalecGUID = 0;
+                KalecGUID.Clear();
             }
 
             Initialize();
@@ -691,12 +686,8 @@ public:
 
         void TeleportAllPlayersBack()
         {
-            Map* map = me->GetMap();
-            if (!map->IsDungeon())
-                return;
-
-            Map::PlayerList const &playerList = map->GetPlayers();
-            Position homePos = me->GetHomePosition();
+            Map::PlayerList const &playerList = me->GetMap()->GetPlayers();
+            Position const& homePos = me->GetHomePosition();
             for (Map::PlayerList::const_iterator itr = playerList.begin(); itr != playerList.end(); ++itr)
             {
                 Player* player = itr->GetSource();

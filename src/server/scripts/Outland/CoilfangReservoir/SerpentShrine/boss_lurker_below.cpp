@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -88,8 +88,28 @@ public:
     {
         boss_the_lurker_belowAI(Creature* creature) : ScriptedAI(creature), Summons(me)
         {
+            Initialize();
             SetCombatMovement(false);
             instance = creature->GetInstanceScript();
+        }
+
+        void Initialize()
+        {
+            SpoutAnimTimer = 1000;
+            RotTimer = 0;
+            WaterboltTimer = 15000; // give time to get in range when fight starts
+            SpoutTimer = 45000;
+            WhirlTimer = 18000; // after avery spout
+            PhaseTimer = 120000;
+            GeyserTimer = rand32() % 5000 + 15000;
+            CheckTimer = 15000; // give time to get in range when fight starts
+            WaitTimer = 60000; // never reached
+            WaitTimer2 = 60000; // never reached
+
+            Submerged = true; // will be false at combat start
+            Spawned = false;
+            InRange = false;
+            CanStartEvent = false;
         }
 
         InstanceScript* instance;
@@ -121,21 +141,7 @@ public:
         {
             me->SetSwim(true);
             me->SetDisableGravity(true);
-            SpoutAnimTimer = 1000;
-            RotTimer = 0;
-            WaterboltTimer = 15000; // give time to get in range when fight starts
-            SpoutTimer = 45000;
-            WhirlTimer = 18000; // after avery spout
-            PhaseTimer = 120000;
-            GeyserTimer = rand32() % 5000 + 15000;
-            CheckTimer = 15000; // give time to get in range when fight starts
-            WaitTimer = 60000; // never reached
-            WaitTimer2 = 60000; // never reached
-
-            Submerged = true; // will be false at combat start
-            Spawned = false;
-            InRange = false;
-            CanStartEvent = false;
+            Initialize();
 
             Summons.DespawnAll();
 
@@ -253,8 +259,7 @@ public:
                 if (CheckTimer <= diff)//check if there are players in melee range
                 {
                     InRange = false;
-                    Map* map = me->GetMap();
-                    Map::PlayerList const &PlayerList = map->GetPlayers();
+                    Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
                     if (!PlayerList.isEmpty())
                     {
                         for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
@@ -268,15 +273,11 @@ public:
 
                 if (RotTimer)
                 {
-                    Map* map = me->GetMap();
-                    if (map->IsDungeon())
+                    Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
+                    for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                     {
-                        Map::PlayerList const &PlayerList = map->GetPlayers();
-                        for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
-                        {
-                            if (i->GetSource() && i->GetSource()->IsAlive() && me->HasInArc(float(diff/20000*M_PI*2), i->GetSource()) && me->IsWithinDist(i->GetSource(), SPOUT_DIST) && !i->GetSource()->IsInWater())
-                                DoCast(i->GetSource(), SPELL_SPOUT, true); // only knock back players in arc, in 100yards, not in water
-                        }
+                        if (i->GetSource() && i->GetSource()->IsAlive() && me->HasInArc(diff/20000.f*float(M_PI)*2.f, i->GetSource()) && me->IsWithinDist(i->GetSource(), SPOUT_DIST) && !i->GetSource()->IsInWater())
+                            DoCast(i->GetSource(), SPELL_SPOUT, true); // only knock back players in arc, in 100yards, not in water
                     }
 
                     if (SpoutAnimTimer <= diff)
@@ -374,7 +375,14 @@ public:
     {
         npc_coilfang_ambusherAI(Creature* creature) : ScriptedAI(creature)
         {
+            Initialize();
             SetCombatMovement(false);
+        }
+
+        void Initialize()
+        {
+            MultiShotTimer = 10000;
+            ShootBowTimer = 4000;
         }
 
         uint32 MultiShotTimer;
@@ -382,8 +390,7 @@ public:
 
         void Reset() override
         {
-            MultiShotTimer = 10000;
-            ShootBowTimer = 4000;
+            Initialize();
         }
 
         void MoveInLineOfSight(Unit* who) override

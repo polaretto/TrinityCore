@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -48,8 +48,6 @@ class instance_gruuls_lair : public InstanceMapScript
                 SetBossNumber(EncounterCount);
                 LoadDoorData(doorData);
                 LoadMinionData(minionData);
-
-                MaulgarGUID = 0;
             }
 
             void OnCreatureCreate(Creature* creature) override
@@ -112,7 +110,7 @@ class instance_gruuls_lair : public InstanceMapScript
                 }
             }
 
-            uint64 GetData64(uint32 type) const override
+            ObjectGuid GetGuidData(uint32 type) const override
             {
                 switch (type)
                 {
@@ -121,11 +119,11 @@ class instance_gruuls_lair : public InstanceMapScript
                     default:
                         break;
                 }
-                return 0;
+                return ObjectGuid::Empty;
             }
 
         protected:
-            uint64 MaulgarGUID;
+            ObjectGuid MaulgarGUID;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

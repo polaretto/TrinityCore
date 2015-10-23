@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -73,6 +73,7 @@ public:
         {
             Initialize();
             instance = creature->GetInstanceScript();
+            uiOutroStep = 0;
         }
 
         void Initialize()
@@ -150,7 +151,7 @@ public:
                         return;
                     }
 
-                    if (Creature* pArthas = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_ARTHAS)))
+                    if (Creature* pArthas = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ARTHAS)))
                         if (pArthas->isDead())
                         {
                             EnterEvadeMode();
@@ -199,7 +200,7 @@ public:
                                 uiOutroTimer = 8000;
                                 break;
                             case 2:
-                                me->SetTarget(instance->GetData64(DATA_ARTHAS));
+                                me->SetTarget(instance->GetGuidData(DATA_ARTHAS));
                                 me->HandleEmoteCommand(29);
                                 Talk(SAY_ESCAPE_SPEECH_2);
                                 ++uiOutroStep;

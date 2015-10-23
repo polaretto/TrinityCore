@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -15,22 +15,12 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
-Name:     Black_Temple
-Complete: 100%
-Comment:  Spirit of Olum: Player Teleporter to Seer Kanai Teleport after defeating Naj'entus and Supremus.
-*/
-
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
-#include "ScriptedGossip.h"
 #include "black_temple.h"
-#include "Player.h"
 
 enum Spells
 {
-    // Spirit of Olum
-    SPELL_TELEPORT                   = 41566,
     // Wrathbone Flayer
     SPELL_CLEAVE                     = 15496,
     SPELL_IGNORED                    = 39544,
@@ -53,36 +43,6 @@ enum Events
 };
 
 // ########################################################
-// Spirit of Olum
-// ########################################################
-
-class npc_spirit_of_olum : public CreatureScript
-{
-public:
-    npc_spirit_of_olum() : CreatureScript("npc_spirit_of_olum") { }
-
-    struct npc_spirit_of_olumAI : public ScriptedAI
-    {
-        npc_spirit_of_olumAI(Creature* creature) : ScriptedAI(creature) { }
-
-        void sGossipSelect(Player* player, uint32 /*sender*/, uint32 action) override
-        {
-            if (action == 1)
-            {
-                player->CLOSE_GOSSIP_MENU();
-                player->InterruptNonMeleeSpells(false);
-                player->CastSpell(player, SPELL_TELEPORT, false);
-            }
-        }
-    };
-
-    CreatureAI* GetAI(Creature* creature) const override
-    {
-        return new npc_spirit_of_olumAI(creature);
-    }
-};
-
-// ########################################################
 // Wrathbone Flayer
 // ########################################################
 
@@ -95,13 +55,19 @@ public:
     {
         npc_wrathbone_flayerAI(Creature* creature) : ScriptedAI(creature)
         {
+            Initialize();
             _instance = creature->GetInstanceScript();
+        }
+
+        void Initialize()
+        {
+            _enteredCombat = false;
         }
 
         void Reset() override
         {
             _events.ScheduleEvent(EVENT_GET_CHANNELERS, 3000);
-            _enteredCombat = false;
+            Initialize();
             _bloodmageList.clear();
             _deathshaperList.clear();
         }
@@ -117,7 +83,6 @@ public:
 
         void UpdateAI(uint32 diff) override
         {
-
             if (!_enteredCombat)
             {
                 _events.Update(diff);
@@ -156,11 +121,11 @@ public:
                         }
                         case EVENT_SET_CHANNELERS:
                         {
-                            for (uint64 guid : _bloodmageList)
+                            for (ObjectGuid guid : _bloodmageList)
                                 if (Creature* bloodmage = ObjectAccessor::GetCreature(*me, guid))
                                     bloodmage->CastSpell((Unit*)NULL, SPELL_SUMMON_CHANNEL);
 
-                            for (uint64 guid : _deathshaperList)
+                            for (ObjectGuid guid : _deathshaperList)
                                 if (Creature* deathshaper = ObjectAccessor::GetCreature(*me, guid))
                                     deathshaper->CastSpell((Unit*)NULL, SPELL_SUMMON_CHANNEL);
 
@@ -202,19 +167,18 @@ public:
         private:
             InstanceScript* _instance;
             EventMap _events;
-            std::list<uint64> _bloodmageList;
-            std::list<uint64> _deathshaperList;
+            GuidList _bloodmageList;
+            GuidList _deathshaperList;
             bool _enteredCombat;
         };
 
     CreatureAI* GetAI(Creature* creature) const override
     {
-        return GetInstanceAI<npc_wrathbone_flayerAI>(creature);
+        return GetBlackTempleAI<npc_wrathbone_flayerAI>(creature);
     }
 };
 
 void AddSC_black_temple()
 {
-    new npc_spirit_of_olum();
     new npc_wrathbone_flayer();
 }

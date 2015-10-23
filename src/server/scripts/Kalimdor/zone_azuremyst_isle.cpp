@@ -1,5 +1,5 @@
  /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,7 +19,7 @@
 /* ScriptData
 SDName: Azuremyst_Isle
 SD%Complete: 75
-SDComment: Quest support: 9283, 9537, 9582, 9554, 9531, ? (special flight path, proper model for mount missing). Injured Draenei cosmetic only, 9582.
+SDComment: Quest support: 9283, 9537, 9582, 9554, ? (special flight path, proper model for mount missing). Injured Draenei cosmetic only, 9582.
 SDCategory: Azuremyst Isle
 EndScriptData */
 
@@ -28,7 +28,6 @@ npc_draenei_survivor
 npc_engineer_spark_overgrind
 npc_injured_draenei
 npc_magwin
-npc_geezle
 go_ravager_cage
 npc_death_ravager
 EndContentData */
@@ -68,7 +67,7 @@ public:
 
         void Initialize()
         {
-            pCaster = 0;
+            pCaster.Clear();
 
             SayThanksTimer = 0;
             RunAwayTimer = 0;
@@ -77,7 +76,7 @@ public:
             CanSayHelp = true;
         }
 
-        uint64 pCaster;
+        ObjectGuid pCaster;
 
         uint32 SayThanksTimer;
         uint32 RunAwayTimer;
@@ -230,7 +229,7 @@ public:
             Talk(ATTACK_YELL, who);
         }
 
-        void sGossipSelect(Player* player, uint32 /*sender*/, uint32 /*action*/) override
+        void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
             player->CLOSE_GOSSIP_MENU();
             me->setFaction(FACTION_HOSTILE);
@@ -351,7 +350,7 @@ public:
             Talk(SAY_AGGRO, who);
         }
 
-        void sQuestAccept(Player* player, Quest const* quest)
+        void sQuestAccept(Player* player, Quest const* quest) override
         {
             if (quest->GetQuestId() == QUEST_A_CRY_FOR_SAY_HELP)
             {
@@ -431,13 +430,13 @@ public:
 
         void Initialize()
         {
-            SparkGUID = 0;
+            SparkGUID.Clear();
             Step = 0;
             EventStarted = false;
             SayTimer = 0;
         }
 
-        uint64 SparkGUID;
+        ObjectGuid SparkGUID;
 
         uint8 Step;
         uint32 SayTimer;
@@ -465,13 +464,13 @@ public:
             SayTimer = 8000;
         }
 
-        uint32 NextStep(uint8 Step)
+        uint32 NextStep(uint8 step)
         {
             Creature* Spark = ObjectAccessor::GetCreature(*me, SparkGUID);
             if (!Spark)
                 return 99999999;
 
-            switch (Step)
+            switch (step)
             {
                 case 0:
                     Spark->GetMotionMaster()->MovePoint(0, -5080.70f, -11253.61f, 0.56f);
@@ -528,7 +527,7 @@ public:
 
             for (std::list<Player*>::const_iterator itr = players.begin(); itr != players.end(); ++itr)
                 if ((*itr)->GetQuestStatus(QUEST_TREES_COMPANY) == QUEST_STATUS_INCOMPLETE && (*itr)->HasAura(SPELL_TREE_DISGUISE))
-                    (*itr)->KilledMonsterCredit(NPC_SPARK, 0);
+                    (*itr)->KilledMonsterCredit(NPC_SPARK);
         }
 
         void DespawnNagaFlag(bool despawn)
@@ -687,7 +686,7 @@ class npc_stillpine_capitive : public CreatureScript
 
             void Initialize()
             {
-                _playerGUID = 0;
+                _playerGUID.Clear();
                 _movementComplete = false;
             }
 
@@ -737,7 +736,7 @@ class npc_stillpine_capitive : public CreatureScript
             }
 
         private:
-            uint64 _playerGUID;
+            ObjectGuid _playerGUID;
             EventMap _events;
             bool _movementComplete;
         };
@@ -775,7 +774,6 @@ void AddSC_azuremyst_isle()
     new npc_engineer_spark_overgrind();
     new npc_injured_draenei();
     new npc_magwin();
-    new npc_geezle();
     new npc_death_ravager();
     new go_ravager_cage();
     new npc_stillpine_capitive();

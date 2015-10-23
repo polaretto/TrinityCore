@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -288,7 +288,7 @@ public:
                 {
                     Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 150, true);
                     if (!target)
-                        target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_PLAYER_GUID));
+                        target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_PLAYER_GUID));
 
                     if (!target)
                     {
@@ -314,7 +314,7 @@ public:
 
                     Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 150, true);
                     if (!target)
-                        target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_PLAYER_GUID));
+                        target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_PLAYER_GUID));
 
                     if (!target)
                     {
@@ -343,7 +343,7 @@ public:
                 {
                     Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 150, true);
                     if (!target)
-                        target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_PLAYER_GUID));
+                        target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_PLAYER_GUID));
 
                     if (!target)
                     {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -38,14 +38,9 @@ void CreatureAI::OnCharmed(bool /*apply*/)
 AISpellInfoType* UnitAI::AISpellInfo;
 AISpellInfoType* GetAISpellInfo(uint32 i) { return &CreatureAI::AISpellInfo[i]; }
 
-void CreatureAI::Talk(uint8 id, WorldObject const* whisperTarget /*= NULL*/)
+void CreatureAI::Talk(uint8 id, WorldObject const* whisperTarget /*= nullptr*/)
 {
     sCreatureTextMgr->SendChat(me, id, whisperTarget);
-}
-
-void CreatureAI::TalkToMap(uint8 id, WorldObject const* whisperTarget /*= NULL*/)
-{
-    sCreatureTextMgr->SendChat(me, id, whisperTarget, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_MAP);
 }
 
 void CreatureAI::DoZoneInCombat(Creature* creature /*= NULL*/, float maxRangeToNearestTarget /* = 50.0f*/)
@@ -143,6 +138,30 @@ void CreatureAI::MoveInLineOfSight(Unit* who)
     //    && me->IsWithinDistInMap(who, sWorld->getIntConfig(CONFIG_CREATURE_FAMILY_ASSISTANCE_RADIUS))
     //    && me->CanStartAttack(who->GetVictim(), true)) /// @todo if we use true, it will not attack it when it arrives
     //    me->GetMotionMaster()->MoveChase(who->GetVictim());
+}
+
+// Distract creature, if player gets too close while stealthed/prowling
+void CreatureAI::TriggerAlert(Unit const* who) const
+{
+    // If there's no target, or target isn't a player do nothing
+    if (!who || who->GetTypeId() != TYPEID_PLAYER)
+        return;
+
+    // If this unit isn't an NPC, is already distracted, is in combat, is confused, stunned or fleeing, do nothing
+    if (me->GetTypeId() != TYPEID_UNIT || me->IsInCombat() || me->HasUnitState(UNIT_STATE_CONFUSED | UNIT_STATE_STUNNED | UNIT_STATE_FLEEING | UNIT_STATE_DISTRACTED))
+        return;
+
+    // Only alert for hostiles!
+    if (me->IsCivilian() || me->HasReactState(REACT_PASSIVE) || !me->IsHostileTo(who) || !me->_IsTargetAcceptable(who))
+        return;
+
+    // Send alert sound (if any) for this creature
+    me->SendAIReaction(AI_REACTION_ALERT);
+
+    // Face the unit (stealthed player) and set distracted state for 5 seconds
+    me->SetFacingTo(me->GetAngle(who->GetPositionX(), who->GetPositionY()));
+    me->StopMoving();
+    me->GetMotionMaster()->MoveDistract(5 * IN_MILLISECONDS);
 }
 
 void CreatureAI::EnterEvadeMode()

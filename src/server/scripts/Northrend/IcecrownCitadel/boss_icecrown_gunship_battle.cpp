@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,12 +19,14 @@
 #include "CreatureTextMgr.h"
 #include "GridNotifiersImpl.h"
 #include "GossipDef.h"
+#include "MovementPackets.h"
 #include "MoveSpline.h"
 #include "MoveSplineInit.h"
 #include "PassiveAI.h"
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "SpellAuraEffects.h"
+#include "SpellHistory.h"
 #include "SpellScript.h"
 #include "Transport.h"
 #include "TransportMgr.h"
@@ -383,7 +385,9 @@ public:
     void ResetSlots(uint32 team)
     {
         _transport = NULL;
-        memset(_controlledSlots, 0, sizeof(uint64)* MAX_SLOTS);
+        for (uint32 i = 0; i < MAX_SLOTS; ++i)
+            _controlledSlots[i].Clear();
+
         memset(_respawnCooldowns, 0, sizeof(time_t)* MAX_SLOTS);
         _spawnPoint = team == HORDE ? &OrgrimsHammerAddsSpawnPos : &SkybreakerAddsSpawnPos;
         _slotInfo = team == HORDE ? OrgrimsHammerSlotInfo : SkybreakerSlotInfo;
@@ -401,7 +405,7 @@ public:
             if (_respawnCooldowns[i] > now)
                 continue;
 
-            if (_controlledSlots[i])
+            if (!_controlledSlots[i].IsEmpty())
             {
                 Creature* current = ObjectAccessor::GetCreature(*_transport, _controlledSlots[i]);
                 if (current && current->IsAlive())
@@ -422,7 +426,7 @@ public:
 
     void ClearSlot(PassengerSlots slot)
     {
-        _controlledSlots[slot] = 0;
+        _controlledSlots[slot].Clear();
         _respawnCooldowns[slot] = time(NULL) + _slotInfo[slot].Cooldown;
     }
 
@@ -448,7 +452,7 @@ private:
     }
 
     Transport* _transport;
-    uint64 _controlledSlots[MAX_SLOTS];
+    ObjectGuid _controlledSlots[MAX_SLOTS];
     time_t _respawnCooldowns[MAX_SLOTS];
     Position const* _spawnPoint;
     SlotInfo const* _slotInfo;
@@ -482,14 +486,14 @@ private:
 class ResetEncounterEvent : public BasicEvent
 {
 public:
-    ResetEncounterEvent(Unit* caster, uint32 spellId, uint64 otherTransport) : _caster(caster), _spellId(spellId), _otherTransport(otherTransport) { }
+    ResetEncounterEvent(Unit* caster, uint32 spellId, ObjectGuid otherTransport) : _caster(caster), _spellId(spellId), _otherTransport(otherTransport) { }
 
     bool Execute(uint64, uint32) override
     {
         _caster->CastSpell(_caster, _spellId, true);
         _caster->GetTransport()->AddObjectToRemoveList();
 
-        if (GameObject* go = HashMapHolder<GameObject>::Find(_otherTransport))
+        if (Transport* go = HashMapHolder<Transport>::Find(_otherTransport))
             go->AddObjectToRemoveList();
 
         return true;
@@ -498,7 +502,7 @@ public:
 private:
     Unit* _caster;
     uint32 _spellId;
-    uint64 _otherTransport;
+    ObjectGuid _otherTransport;
 };
 
 class BattleExperienceEvent : public BasicEvent
@@ -642,10 +646,10 @@ protected:
     {
         if (Instance->GetBossState(DATA_ICECROWN_GUNSHIP_BATTLE) == IN_PROGRESS &&
             !me->HasUnitState(UNIT_STATE_CASTING) && !me->HasReactState(REACT_PASSIVE) &&
-            !me->HasSpellCooldown(BurningPitchId))
+            !me->GetSpellHistory()->HasCooldown(BurningPitchId))
         {
             DoCastAOE(BurningPitchId, true);
-            me->_AddCreatureSpellCooldown(BurningPitchId, time(NULL) + urand(3000, 4000) / IN_MILLISECONDS);
+            me->GetSpellHistory()->AddCooldown(BurningPitchId, 0, std::chrono::milliseconds(urand(3000, 4000)));
         }
     }
 
@@ -742,12 +746,6 @@ class npc_gunship : public CreatureScript
                     if (isVictory)
                     {
                         cannon->CastSpell(cannon, SPELL_EJECT_ALL_PASSENGERS_BELOW_ZERO, TRIGGERED_FULL_MASK);
-
-                        WorldPacket data(SMSG_PLAYER_VEHICLE_DATA, cannon->GetPackGUID().size() + 4);
-                        data.append(cannon->GetPackGUID());
-                        data << uint32(0);
-                        cannon->SendMessageToSet(&data, true);
-
                         cannon->RemoveVehicleKit();
                     }
                     else
@@ -767,9 +765,8 @@ class npc_gunship : public CreatureScript
 
                 if (isVictory)
                 {
-                    if (GameObject* go = HashMapHolder<GameObject>::Find(instance->GetData64(DATA_ICECROWN_GUNSHIP_BATTLE)))
-                        if (Transport* otherTransport = go->ToTransport())
-                            otherTransport->EnableMovement(true);
+                    if (Transport* otherTransport = HashMapHolder<Transport>::Find(instance->GetGuidData(DATA_ICECROWN_GUNSHIP_BATTLE)))
+                        otherTransport->EnableMovement(true);
 
                     me->GetTransport()->EnableMovement(true);
 
@@ -791,17 +788,17 @@ class npc_gunship : public CreatureScript
                 else
                 {
                     uint32 teleportSpellId = _teamInInstance == HORDE ? SPELL_TELEPORT_PLAYERS_ON_RESET_H : SPELL_TELEPORT_PLAYERS_ON_RESET_A;
-                    me->m_Events.AddEvent(new ResetEncounterEvent(me, teleportSpellId, me->GetInstanceScript()->GetData64(DATA_ENEMY_GUNSHIP)),
+                    me->m_Events.AddEvent(new ResetEncounterEvent(me, teleportSpellId, me->GetInstanceScript()->GetGuidData(DATA_ENEMY_GUNSHIP)),
                         me->m_Events.CalculateTime(8000));
                 }
             }
 
-            void SetGUID(uint64 guid, int32 id/* = 0*/) override
+            void SetGUID(ObjectGuid guid, int32 id/* = 0*/) override
             {
                 if (id != ACTION_SHIP_VISITS)
                     return;
 
-                std::map<uint64, uint32>::iterator itr = _shipVisits.find(guid);
+                std::map<ObjectGuid, uint32>::iterator itr = _shipVisits.find(guid);
                 if (itr == _shipVisits.end())
                     _shipVisits[guid] = 1;
                 else
@@ -814,7 +811,7 @@ class npc_gunship : public CreatureScript
                     return 0;
 
                 uint32 max = 0;
-                for (std::map<uint64, uint32>::const_iterator itr = _shipVisits.begin(); itr != _shipVisits.end(); ++itr)
+                for (std::map<ObjectGuid, uint32>::const_iterator itr = _shipVisits.begin(); itr != _shipVisits.end(); ++itr)
                     max = std::max(max, itr->second);
 
                 return max;
@@ -822,7 +819,7 @@ class npc_gunship : public CreatureScript
 
         private:
             uint32 _teamInInstance;
-            std::map<uint64, uint32> _shipVisits;
+            std::map<ObjectGuid, uint32> _shipVisits;
             bool _summonedFirstMage;
             bool _died;
         };
@@ -959,7 +956,7 @@ class npc_high_overlord_saurfang_igb : public CreatureScript
                 }
             }
 
-            void sGossipSelect(Player* /*player*/, uint32 /*sender*/, uint32 /*action*/) override
+            void sGossipSelect(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/) override
             {
                 me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 me->GetTransport()->EnableMovement(true);
@@ -998,7 +995,7 @@ class npc_high_overlord_saurfang_igb : public CreatureScript
                             Talk(SAY_SAURFANG_INTRO_2);
                             break;
                         case EVENT_INTRO_SUMMON_SKYBREAKER:
-                            sTransportMgr->CreateTransport(GO_THE_SKYBREAKER_H, 0, me->GetMap());
+                            sTransportMgr->CreateTransport(GO_THE_SKYBREAKER_H, UI64LIT(0), me->GetMap());
                             break;
                         case EVENT_INTRO_H_3:
                             Talk(SAY_SAURFANG_INTRO_3);
@@ -1032,9 +1029,8 @@ class npc_high_overlord_saurfang_igb : public CreatureScript
                             if (Transport* orgrimsHammer = me->GetTransport())
                                 orgrimsHammer->SummonPassenger(NPC_TELEPORT_PORTAL, OrgrimsHammerTeleportPortal, TEMPSUMMON_TIMED_DESPAWN, NULL, 21000);
 
-                            if (GameObject* go = HashMapHolder<GameObject>::Find(_instance->GetData64(DATA_ICECROWN_GUNSHIP_BATTLE)))
-                                if (Transport* skybreaker = go->ToTransport())
-                                    skybreaker->SummonPassenger(NPC_TELEPORT_EXIT, SkybreakerTeleportExit, TEMPSUMMON_TIMED_DESPAWN, NULL, 23000);
+                            if (Transport* skybreaker = HashMapHolder<Transport>::Find(_instance->GetGuidData(DATA_ICECROWN_GUNSHIP_BATTLE)))
+                                skybreaker->SummonPassenger(NPC_TELEPORT_EXIT, SkybreakerTeleportExit, TEMPSUMMON_TIMED_DESPAWN, NULL, 23000);
 
                             _events.ScheduleEvent(EVENT_ADDS_BOARD_YELL, 6000);
                             _events.ScheduleEvent(EVENT_ADDS, 60000);
@@ -1228,7 +1224,7 @@ class npc_muradin_bronzebeard_igb : public CreatureScript
                 }
             }
 
-            void sGossipSelect(Player* /*player*/, uint32 /*sender*/, uint32 /*action*/) override
+            void sGossipSelect(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/) override
             {
                 me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 me->GetTransport()->EnableMovement(true);
@@ -1268,7 +1264,7 @@ class npc_muradin_bronzebeard_igb : public CreatureScript
                             Talk(SAY_MURADIN_INTRO_2);
                             break;
                         case EVENT_INTRO_SUMMON_ORGRIMS_HAMMER:
-                            sTransportMgr->CreateTransport(GO_ORGRIMS_HAMMER_A, 0, me->GetMap());
+                            sTransportMgr->CreateTransport(GO_ORGRIMS_HAMMER_A, UI64LIT(0), me->GetMap());
                             break;
                         case EVENT_INTRO_A_3:
                             Talk(SAY_MURADIN_INTRO_3);
@@ -1305,9 +1301,8 @@ class npc_muradin_bronzebeard_igb : public CreatureScript
                             if (Transport* skybreaker = me->GetTransport())
                                 skybreaker->SummonPassenger(NPC_TELEPORT_PORTAL, SkybreakerTeleportPortal, TEMPSUMMON_TIMED_DESPAWN, NULL, 21000);
 
-                            if (GameObject* go = HashMapHolder<GameObject>::Find(_instance->GetData64(DATA_ICECROWN_GUNSHIP_BATTLE)))
-                                if (Transport* orgrimsHammer = go->ToTransport())
-                                    orgrimsHammer->SummonPassenger(NPC_TELEPORT_EXIT, OrgrimsHammerTeleportExit, TEMPSUMMON_TIMED_DESPAWN, NULL, 23000);
+                            if (Transport* orgrimsHammer = HashMapHolder<Transport>::Find(_instance->GetGuidData(DATA_ICECROWN_GUNSHIP_BATTLE)))
+                                orgrimsHammer->SummonPassenger(NPC_TELEPORT_EXIT, OrgrimsHammerTeleportExit, TEMPSUMMON_TIMED_DESPAWN, NULL, 23000);
 
                             _events.ScheduleEvent(EVENT_ADDS_BOARD_YELL, 6000);
                             _events.ScheduleEvent(EVENT_ADDS, 60000);
@@ -1394,7 +1389,7 @@ class npc_zafod_boombox : public CreatureScript
                 me->SetReactState(REACT_PASSIVE);
             }
 
-            void sGossipSelect(Player* player, uint32 /*sender*/, uint32 /*action*/) override
+            void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
             {
                 player->AddItem(ITEM_GOBLIN_ROCKET_PACK, 1);
                 player->PlayerTalkClass->SendCloseGossip();
@@ -1451,9 +1446,8 @@ struct npc_gunship_boarding_addAI : public gunship_npc_AI
             if (!myTransport)
                 return;
 
-            if (GameObject* go = HashMapHolder<GameObject>::Find(Instance->GetData64(DATA_ICECROWN_GUNSHIP_BATTLE)))
-                if (Transport* destTransport = go->ToTransport())
-                    destTransport->CalculatePassengerPosition(x, y, z, &o);
+            if (Transport* destTransport = HashMapHolder<Transport>::Find(Instance->GetGuidData(DATA_ICECROWN_GUNSHIP_BATTLE)))
+                destTransport->CalculatePassengerPosition(x, y, z, &o);
 
             float angle = frand(0, float(M_PI) * 2.0f);
             x += 2.0f * std::cos(angle);
@@ -1467,7 +1461,7 @@ struct npc_gunship_boarding_addAI : public gunship_npc_AI
             DoCast(me, SPELL_BATTLE_EXPERIENCE, true);
             DoCast(me, SPELL_TELEPORT_TO_ENEMY_SHIP, true);
             DoCast(me, Instance->GetData(DATA_TEAM_IN_INSTANCE) == HORDE ? SPELL_MELEE_TARGETING_ON_ORGRIMS_HAMMER : SPELL_MELEE_TARGETING_ON_SKYBREAKER, true);
-            me->_AddCreatureSpellCooldown(BurningPitchId, time(NULL) + 3);
+            me->GetSpellHistory()->AddCooldown(BurningPitchId, 0, std::chrono::seconds(3));
 
             std::list<Player*> players;
             Trinity::UnitAuraCheck check(true, Instance->GetData(DATA_TEAM_IN_INSTANCE) == HORDE ? SPELL_ON_ORGRIMS_HAMMER_DECK : SPELL_ON_SKYBREAKER_DECK);
@@ -1696,11 +1690,11 @@ class npc_gunship_rocketeer : public CreatureScript
                     return;
 
                 uint32 spellId = me->GetEntry() == NPC_SKYBREAKER_MORTAR_SOLDIER ? SPELL_ROCKET_ARTILLERY_A : SPELL_ROCKET_ARTILLERY_H;
-                if (me->HasSpellCooldown(spellId))
+                if (me->GetSpellHistory()->HasCooldown(spellId))
                     return;
 
                 DoCastAOE(spellId, true);
-                me->_AddCreatureSpellCooldown(spellId, time(NULL) + 9);
+                me->GetSpellHistory()->AddCooldown(spellId, 0, std::chrono::seconds(9));
             }
         };
 
@@ -1775,7 +1769,7 @@ class npc_gunship_mage : public CreatureScript
           but it actually is a valid flag - needs more research to fix both freezes and keep the flag as is (see WorldSession::ReadMovementInfo)
 
 Example packet:
-ClientToServer: CMSG_FORCE_MOVE_ROOT_ACK (0x00E9) Length: 67 ConnectionIndex: 0 Time: 03/04/2010 03:57:55.000 Number: 471326
+ClientToServer: CMSG_MOVE_FORCE_ROOT_ACK (0x00E9) Length: 67 ConnectionIndex: 0 Time: 03/04/2010 03:57:55.000 Number: 471326
 Guid:
 Movement Counter: 80
 Movement Flags: OnTransport, Root (2560)
@@ -1844,8 +1838,8 @@ class spell_igb_rocket_pack : public SpellScriptLoader
 
             void HandleRemove(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
             {
-                SpellInfo const* damageInfo = sSpellMgr->EnsureSpellInfo(SPELL_ROCKET_PACK_DAMAGE);
-                GetTarget()->CastCustomSpell(SPELL_ROCKET_PACK_DAMAGE, SPELLVALUE_BASE_POINT0, 2 * (damageInfo->Effects[EFFECT_0].CalcValue() + aurEff->GetTickNumber() * aurEff->GetAmplitude()), NULL, TRIGGERED_FULL_MASK);
+                SpellInfo const* damageInfo = sSpellMgr->AssertSpellInfo(SPELL_ROCKET_PACK_DAMAGE);
+                GetTarget()->CastCustomSpell(SPELL_ROCKET_PACK_DAMAGE, SPELLVALUE_BASE_POINT0, 2 * (damageInfo->GetEffect(EFFECT_0)->CalcValue() + aurEff->GetTickNumber() * aurEff->GetPeriod()), NULL, TRIGGERED_FULL_MASK);
                 GetTarget()->CastSpell(NULL, SPELL_ROCKET_BURST, TRIGGERED_FULL_MASK);
             }
 
@@ -1871,7 +1865,7 @@ class spell_igb_rocket_pack_useable : public SpellScriptLoader
         {
             PrepareAuraScript(spell_igb_rocket_pack_useable_AuraScript);
 
-            bool Load()
+            bool Load() override
             {
                 return GetOwner()->GetInstanceScript() != nullptr;
             }
@@ -1920,6 +1914,13 @@ class spell_igb_on_gunship_deck : public SpellScriptLoader
         {
             PrepareAuraScript(spell_igb_on_gunship_deck_AuraScript);
 
+        public:
+            spell_igb_on_gunship_deck_AuraScript()
+            {
+                _teamInInstance = 0;
+            }
+
+        private:
             bool Load() override
             {
                 if (InstanceScript* instance = GetOwner()->GetInstanceScript())
@@ -1968,7 +1969,7 @@ class spell_igb_periodic_trigger_with_power_cost : public SpellScriptLoader
             void HandlePeriodicTick(AuraEffect const* /*aurEff*/)
             {
                 PreventDefaultAction();
-                GetTarget()->CastSpell(GetTarget(), GetSpellInfo()->Effects[EFFECT_0].TriggerSpell, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_POWER_AND_REAGENT_COST));
+                GetTarget()->CastSpell(GetTarget(), GetSpellInfo()->GetEffect(EFFECT_0)->TriggerSpell, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_POWER_AND_REAGENT_COST));
             }
 
             void Register() override
@@ -1992,7 +1993,7 @@ class spell_igb_cannon_blast : public SpellScriptLoader
         {
             PrepareSpellScript(spell_igb_cannon_blast_SpellScript);
 
-            bool Load()
+            bool Load() override
             {
                 return GetCaster()->GetTypeId() == TYPEID_UNIT;
             }
@@ -2029,6 +2030,13 @@ class spell_igb_incinerating_blast : public SpellScriptLoader
         {
             PrepareSpellScript(spell_igb_incinerating_blast_SpellScript);
 
+        public:
+            spell_igb_incinerating_blast_SpellScript()
+            {
+                _energyLeft = 0;
+            }
+
+        private:
             void StoreEnergy()
             {
                 _energyLeft = GetCaster()->GetPower(POWER_ENERGY) - 10;
@@ -2076,7 +2084,7 @@ class spell_igb_overheat : public SpellScriptLoader
                 return GetUnitOwner()->IsVehicle();
             }
 
-            void SendClientControl(uint8 value)
+            void SendClientControl(bool value)
             {
                 if (Vehicle* vehicle = GetUnitOwner()->GetVehicleKit())
                 {
@@ -2084,10 +2092,10 @@ class spell_igb_overheat : public SpellScriptLoader
                     {
                         if (Player* player = passenger->ToPlayer())
                         {
-                            WorldPacket data(SMSG_CLIENT_CONTROL_UPDATE, GetUnitOwner()->GetPackGUID().size() + 1);
-                            data.append(GetUnitOwner()->GetPackGUID());
-                            data << uint8(value);
-                            player->GetSession()->SendPacket(&data);
+                            WorldPackets::Movement::ControlUpdate data;
+                            data.Guid = GetUnitOwner()->GetGUID();
+                            data.On = value;
+                            player->GetSession()->SendPacket(data.Write());
                         }
                     }
                 }
@@ -2095,12 +2103,12 @@ class spell_igb_overheat : public SpellScriptLoader
 
             void HandleApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
             {
-                SendClientControl(0);
+                SendClientControl(false);
             }
 
             void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
             {
-                SendClientControl(1);
+                SendClientControl(true);
             }
 
             void Register() override
@@ -2327,7 +2335,7 @@ class spell_igb_gunship_fall_teleport : public SpellScriptLoader
         {
             PrepareSpellScript(spell_igb_gunship_fall_teleport_SpellScript);
 
-            bool Load()
+            bool Load() override
             {
                 return GetCaster()->GetInstanceScript() != nullptr;
             }
@@ -2335,7 +2343,7 @@ class spell_igb_gunship_fall_teleport : public SpellScriptLoader
             void SelectTransport(WorldObject*& target)
             {
                 if (InstanceScript* instance = target->GetInstanceScript())
-                    target = HashMapHolder<GameObject>::Find(instance->GetData64(DATA_ICECROWN_GUNSHIP_BATTLE));
+                    target = HashMapHolder<Transport>::Find(instance->GetGuidData(DATA_ICECROWN_GUNSHIP_BATTLE));
             }
 
             void RelocateDest(SpellEffIndex /*effIndex*/)
@@ -2368,9 +2376,15 @@ class spell_igb_check_for_players : public SpellScriptLoader
         {
             PrepareSpellScript(spell_igb_check_for_players_SpellScript);
 
-            bool Load() override
+        public:
+            spell_igb_check_for_players_SpellScript()
             {
                 _playerCount = 0;
+            }
+
+        private:
+            bool Load() override
+            {
                 return GetCaster()->GetTypeId() == TYPEID_UNIT;
             }
 
@@ -2426,7 +2440,7 @@ class spell_igb_teleport_players_on_victory : public SpellScriptLoader
                 InstanceScript* instance = GetCaster()->GetInstanceScript();
                 targets.remove_if([instance](WorldObject* target) -> bool
                 {
-                    return target->GetTransGUID() != instance->GetData64(DATA_ENEMY_GUNSHIP);
+                    return target->GetTransGUID() != instance->GetGuidData(DATA_ENEMY_GUNSHIP);
                 });
             }
 

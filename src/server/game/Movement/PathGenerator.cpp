@@ -1,4 +1,5 @@
 /*
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,7 +23,7 @@
 #include "MMapFactory.h"
 #include "MMapManager.h"
 #include "Log.h"
-
+#include "DisableMgr.h"
 #include "DetourCommon.h"
 #include "DetourNavMeshQuery.h"
 
@@ -35,14 +36,14 @@ PathGenerator::PathGenerator(const Unit* owner) :
 {
     memset(_pathPolyRefs, 0, sizeof(_pathPolyRefs));
 
-    TC_LOG_DEBUG("maps", "++ PathGenerator::PathGenerator for %u \n", _sourceUnit->GetGUIDLow());
+    TC_LOG_DEBUG("maps", "++ PathGenerator::PathGenerator for %s", _sourceUnit->GetGUID().ToString().c_str());
 
     uint32 mapId = _sourceUnit->GetMapId();
-    if (MMAP::MMapFactory::IsPathfindingEnabled(mapId))
+    if (DisableMgr::IsPathfindingEnabled(mapId))
     {
         MMAP::MMapManager* mmap = MMAP::MMapFactory::createOrGetMMapManager();
-        _navMesh = mmap->GetNavMesh(mapId);
-        _navMeshQuery = mmap->GetNavMeshQuery(mapId, _sourceUnit->GetInstanceId());
+        _navMesh = mmap->GetNavMesh(mapId, _sourceUnit->GetTerrainSwaps());
+        _navMeshQuery = mmap->GetNavMeshQuery(mapId, _sourceUnit->GetInstanceId(), _sourceUnit->GetTerrainSwaps());
     }
 
     CreateFilter();
@@ -50,7 +51,7 @@ PathGenerator::PathGenerator(const Unit* owner) :
 
 PathGenerator::~PathGenerator()
 {
-    TC_LOG_DEBUG("maps", "++ PathGenerator::~PathGenerator() for %u \n", _sourceUnit->GetGUIDLow());
+    TC_LOG_DEBUG("maps", "++ PathGenerator::~PathGenerator() for %s", _sourceUnit->GetGUID().ToString().c_str());
 }
 
 bool PathGenerator::CalculatePath(float destX, float destY, float destZ, bool forceDest, bool straightLine)
@@ -70,7 +71,7 @@ bool PathGenerator::CalculatePath(float destX, float destY, float destZ, bool fo
     _forceDestination = forceDest;
     _straightLine = straightLine;
 
-    TC_LOG_DEBUG("maps", "++ PathGenerator::CalculatePath() for %u \n", _sourceUnit->GetGUIDLow());
+    TC_LOG_DEBUG("maps", "++ PathGenerator::CalculatePath() for %s", _sourceUnit->GetGUID().ToString().c_str());
 
     // make sure navMesh works - we can run on map w/o mmap
     // check if the start and end point have a .mmtile loaded (can we pass via not loaded tile on the way?)
@@ -116,7 +117,7 @@ dtPolyRef PathGenerator::GetPathPolyByPosition(dtPolyRef const* polyPath, uint32
     }
 
     if (distance)
-        *distance = dtSqrt(minDist3d);
+        *distance = dtMathSqrtf(minDist3d);
 
     return (minDist2d < 3.0f) ? nearestPoly : INVALID_POLYREF;
 }
@@ -392,7 +393,7 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
             // this is probably an error state, but we'll leave it
             // and hopefully recover on the next Update
             // we still need to copy our preffix
-            TC_LOG_ERROR("maps", "%u's Path Build failed: 0 length path", _sourceUnit->GetGUIDLow());
+            TC_LOG_ERROR("maps", "%s's Path Build failed: 0 length path", _sourceUnit->GetGUID().ToString().c_str());
         }
 
         TC_LOG_DEBUG("maps", "++  m_polyLength=%u prefixPolyLength=%u suffixPolyLength=%u \n", _polyLength, prefixPolyLength, suffixPolyLength);
@@ -453,7 +454,7 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
         if (!_polyLength || dtStatusFailed(dtResult))
         {
             // only happens if we passed bad data to findPath(), or navmesh is messed up
-            TC_LOG_ERROR("maps", "%u's Path Build failed: 0 length path", _sourceUnit->GetGUIDLow());
+            TC_LOG_ERROR("maps", "%s's Path Build failed: 0 length path", _sourceUnit->GetGUID().ToString().c_str());
             BuildShortcut();
             _type = PATHFIND_NOPATH;
             return;
@@ -799,7 +800,7 @@ dtStatus PathGenerator::FindSmoothPath(float const* startPos, float const* endPo
         // Find movement delta.
         float delta[VERTEX_SIZE];
         dtVsub(delta, steerPos, iterPos);
-        float len = dtSqrt(dtVdot(delta, delta));
+        float len = dtMathSqrtf(dtVdot(delta, delta));
         // If the steer target is end of path or off-mesh link, do not move past the location.
         if ((endOfPath || offMeshConnection) && len < SMOOTH_PATH_STEP_SIZE)
             len = 1.0f;
@@ -853,16 +854,16 @@ dtStatus PathGenerator::FindSmoothPath(float const* startPos, float const* endPo
             npolys -= npos;
 
             // Handle the connection.
-            float startPos[VERTEX_SIZE], endPos[VERTEX_SIZE];
-            if (dtStatusSucceed(_navMesh->getOffMeshConnectionPolyEndPoints(prevRef, polyRef, startPos, endPos)))
+            float connectionStartPos[VERTEX_SIZE], connectionEndPos[VERTEX_SIZE];
+            if (dtStatusSucceed(_navMesh->getOffMeshConnectionPolyEndPoints(prevRef, polyRef, connectionStartPos, connectionEndPos)))
             {
                 if (nsmoothPath < maxSmoothPathSize)
                 {
-                    dtVcopy(&smoothPath[nsmoothPath*VERTEX_SIZE], startPos);
+                    dtVcopy(&smoothPath[nsmoothPath*VERTEX_SIZE], connectionStartPos);
                     nsmoothPath++;
                 }
                 // Move position at the other side of the off-mesh link.
-                dtVcopy(iterPos, endPos);
+                dtVcopy(iterPos, connectionEndPos);
                 _navMeshQuery->getPolyHeight(polys[0], iterPos, &iterPos[1]);
                 iterPos[1] += 0.5f;
             }
@@ -924,6 +925,7 @@ void PathGenerator::ReducePathLenghtByDist(float dist)
             float step = dist / len;
             // same as nextVec
             _pathPoints[i + 1] -= diffVec * step;
+            _sourceUnit->UpdateAllowedPositionZ(_pathPoints[i + 1].x, _pathPoints[i + 1].y, _pathPoints[i + 1].z);
             _pathPoints.resize(i + 2);
             break;
         }

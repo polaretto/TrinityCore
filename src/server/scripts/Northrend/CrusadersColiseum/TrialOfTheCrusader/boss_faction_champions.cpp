@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -384,7 +384,7 @@ class boss_toc_champion_controller : public CreatureScript
                 vOtherEntries.push_back(playerTeam == ALLIANCE ? NPC_HORDE_WARRIOR : NPC_ALLIANCE_WARRIOR);
 
                 uint8 healersSubtracted = 2;
-                if (_instance->instance->GetSpawnMode() == RAID_DIFFICULTY_25MAN_NORMAL || _instance->instance->GetSpawnMode() == RAID_DIFFICULTY_25MAN_HEROIC)
+                if (_instance->instance->GetSpawnMode() == DIFFICULTY_25_N || _instance->instance->GetSpawnMode() == DIFFICULTY_25_HC)
                     healersSubtracted = 1;
                 for (uint8 i = 0; i < healersSubtracted; ++i)
                 {
@@ -421,7 +421,7 @@ class boss_toc_champion_controller : public CreatureScript
                     vHealersEntries.erase(vHealersEntries.begin() + pos);
                 }
 
-                if (_instance->instance->GetSpawnMode() == RAID_DIFFICULTY_10MAN_NORMAL || _instance->instance->GetSpawnMode() == RAID_DIFFICULTY_10MAN_HEROIC)
+                if (_instance->instance->GetSpawnMode() == DIFFICULTY_10_N || _instance->instance->GetSpawnMode() == DIFFICULTY_10_HC)
                     for (uint8 i = 0; i < 4; ++i)
                         vOtherEntries.erase(vOtherEntries.begin() + urand(0, vOtherEntries.size() - 1));
 
@@ -483,7 +483,7 @@ class boss_toc_champion_controller : public CreatureScript
                         SummonChampions((Team)uiData);
                         break;
                     case 1:
-                        for (std::list<uint64>::iterator i = _summons.begin(); i != _summons.end(); ++i)
+                        for (SummonList::iterator i = _summons.begin(); i != _summons.end(); ++i)
                         {
                             if (Creature* temp = ObjectAccessor::GetCreature(*me, *i))
                             {
@@ -565,7 +565,7 @@ struct boss_faction_championsAI : public BossAI
 
     void JustReachedHome() override
     {
-        if (Creature* pChampionController = ObjectAccessor::GetCreature((*me), instance->GetData64(NPC_CHAMPIONS_CONTROLLER)))
+        if (Creature* pChampionController = ObjectAccessor::GetCreature((*me), instance->GetGuidData(NPC_CHAMPIONS_CONTROLLER)))
             pChampionController->AI()->SetData(2, FAIL);
         me->DespawnOrUnsummon();
     }
@@ -615,7 +615,7 @@ struct boss_faction_championsAI : public BossAI
     void JustDied(Unit* /*killer*/) override
     {
         if (_aiType != AI_PET)
-            if (Creature* pChampionController = ObjectAccessor::GetCreature((*me), instance->GetData64(NPC_CHAMPIONS_CONTROLLER)))
+            if (Creature* pChampionController = ObjectAccessor::GetCreature((*me), instance->GetGuidData(NPC_CHAMPIONS_CONTROLLER)))
                 pChampionController->AI()->SetData(2, DONE);
     }
 
@@ -623,7 +623,7 @@ struct boss_faction_championsAI : public BossAI
     {
         DoCast(me, SPELL_ANTI_AOE, true);
         _EnterCombat();
-        if (Creature* pChampionController = ObjectAccessor::GetCreature((*me), instance->GetData64(NPC_CHAMPIONS_CONTROLLER)))
+        if (Creature* pChampionController = ObjectAccessor::GetCreature((*me), instance->GetGuidData(NPC_CHAMPIONS_CONTROLLER)))
             pChampionController->AI()->SetData(2, IN_PROGRESS);
     }
 
@@ -640,15 +640,13 @@ struct boss_faction_championsAI : public BossAI
 
             if (TeamInInstance == ALLIANCE)
             {
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetData64(NPC_VARIAN)))
+                if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(NPC_VARIAN)))
                     temp->AI()->Talk(SAY_KILL_PLAYER);
             }
             else
-                if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetData64(NPC_GARROSH)))
+                if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(NPC_GARROSH)))
                     temp->AI()->Talk(SAY_KILL_PLAYER);
 
-
-            instance->SetData(DATA_TRIBUTE_TO_IMMORTALITY_ELIGIBLE, 0);
         }
     }
 
@@ -666,10 +664,9 @@ struct boss_faction_championsAI : public BossAI
     {
         std::list<HostileReference*> const& tList = me->getThreatManager().getThreatList();
         std::list<HostileReference*>::const_iterator iter;
-        Unit* target;
         for (iter = tList.begin(); iter!=tList.end(); ++iter)
         {
-            target = ObjectAccessor::GetUnit(*me, (*iter)->getUnitGuid());
+            Unit* target = ObjectAccessor::GetUnit(*me, (*iter)->getUnitGuid());
             if (target && target->getPowerType() == POWER_MANA)
                 return target;
         }
@@ -681,10 +678,9 @@ struct boss_faction_championsAI : public BossAI
         std::list<HostileReference*> const& tList = me->getThreatManager().getThreatList();
         std::list<HostileReference*>::const_iterator iter;
         uint32 count = 0;
-        Unit* target;
         for (iter = tList.begin(); iter != tList.end(); ++iter)
         {
-            target = ObjectAccessor::GetUnit(*me, (*iter)->getUnitGuid());
+            Unit* target = ObjectAccessor::GetUnit(*me, (*iter)->getUnitGuid());
                 if (target && me->GetDistance2d(target) < distance)
                     ++count;
         }

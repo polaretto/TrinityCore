@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -81,11 +81,26 @@ public:
 
     struct npc_commander_dawnforgeAI : public ScriptedAI
     {
-        npc_commander_dawnforgeAI(Creature* creature) : ScriptedAI(creature) { }
+        npc_commander_dawnforgeAI(Creature* creature) : ScriptedAI(creature)
+        {
+            Initialize();
+        }
 
-        uint64 PlayerGUID;
-        uint64 ardonisGUID;
-        uint64 pathaleonGUID;
+        void Initialize()
+        {
+            PlayerGUID.Clear();
+            ardonisGUID.Clear();
+            pathaleonGUID.Clear();
+
+            Phase = 1;
+            PhaseSubphase = 0;
+            Phase_Timer = 4000;
+            isEvent = false;
+        }
+
+        ObjectGuid PlayerGUID;
+        ObjectGuid ardonisGUID;
+        ObjectGuid pathaleonGUID;
 
         uint32 Phase;
         uint32 PhaseSubphase;
@@ -94,14 +109,7 @@ public:
 
         void Reset() override
         {
-            PlayerGUID = 0;
-            ardonisGUID = 0;
-            pathaleonGUID = 0;
-
-            Phase = 1;
-            PhaseSubphase = 0;
-            Phase_Timer = 4000;
-            isEvent = false;
+            Initialize();
         }
 
         void EnterCombat(Unit* /*who*/) override { }
@@ -307,7 +315,7 @@ class at_commander_dawnforge : public AreaTriggerScript
 public:
     at_commander_dawnforge() : AreaTriggerScript("at_commander_dawnforge") { }
 
-    bool OnTrigger(Player* player, const AreaTriggerEntry* /*at*/) override
+    bool OnTrigger(Player* player, const AreaTriggerEntry* /*areaTrigger*/, bool /*entered*/) override
     {
         //if player lost aura or not have at all, we should not try start event.
         if (!player->HasAura(SPELL_SUNFURY_DISGUISE))
@@ -415,7 +423,6 @@ public:
             Materialize = false;
             Drained = false;
             WeakPercent = 25;
-            PlayerGUID = 0;
             ManaBurnTimer = 5000;
         }
 
@@ -424,7 +431,7 @@ public:
         bool Drained;
         uint8 WeakPercent;
 
-        uint64 PlayerGUID;
+        ObjectGuid PlayerGUID;
 
         uint32 ManaBurnTimer;
 
@@ -435,7 +442,7 @@ public:
             Drained = false;
             WeakPercent = 25 + (rand32() % 16); // 25-40
 
-            PlayerGUID = 0;
+            PlayerGUID.Clear();
 
             ManaBurnTimer = 5000 + (rand32() % 3 * 1000); // 5-8 sec cd
 
@@ -624,15 +631,23 @@ public:
 
     struct npc_maxx_a_million_escortAI : public npc_escortAI
     {
-        npc_maxx_a_million_escortAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_maxx_a_million_escortAI(Creature* creature) : npc_escortAI(creature)
+        {
+            Initialize();
+        }
+
+        void Initialize()
+        {
+            bTake = false;
+            uiTakeTimer = 3000;
+        }
 
         bool bTake;
         uint32 uiTakeTimer;
 
         void Reset() override
         {
-            bTake=false;
-            uiTakeTimer=3000;
+            Initialize();
         }
 
         void WaypointReached(uint32 waypointId) override
@@ -725,7 +740,7 @@ class go_captain_tyralius_prison : public GameObjectScript
             go->UseDoorOrButton();
             if (Creature* tyralius = go->FindNearestCreature(NPC_CAPTAIN_TYRALIUS, 1.0f))
             {
-                player->KilledMonsterCredit(NPC_CAPTAIN_TYRALIUS, 0);
+                player->KilledMonsterCredit(NPC_CAPTAIN_TYRALIUS);
                 tyralius->AI()->Talk(SAY_FREE);
                 tyralius->DespawnOrUnsummon(8000);
             }

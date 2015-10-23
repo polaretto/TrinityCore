@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -1554,7 +1554,7 @@ struct BattlegroundAVScore final : public BattlegroundScore
     friend class BattlegroundAV;
 
     protected:
-        BattlegroundAVScore(uint64 playerGuid) : BattlegroundScore(playerGuid), GraveyardsAssaulted(0), GraveyardsDefended(0), TowersAssaulted(0), TowersDefended(0), MinesCaptured(0) { }
+        BattlegroundAVScore(ObjectGuid playerGuid, uint32 team) : BattlegroundScore(playerGuid, team), GraveyardsAssaulted(0), GraveyardsDefended(0), TowersAssaulted(0), TowersDefended(0), MinesCaptured(0) { }
 
         void UpdateScore(uint32 type, uint32 value) override
         {
@@ -1581,14 +1581,13 @@ struct BattlegroundAVScore final : public BattlegroundScore
             }
         }
 
-        void BuildObjectivesBlock(WorldPacket& data) final override
+        void BuildObjectivesBlock(std::vector<int32>& stats) override
         {
-            data << uint32(5); // Objectives Count
-            data << uint32(GraveyardsAssaulted);
-            data << uint32(GraveyardsDefended);
-            data << uint32(TowersAssaulted);
-            data << uint32(TowersDefended);
-            data << uint32(MinesCaptured);
+            stats.push_back(GraveyardsAssaulted);
+            stats.push_back(GraveyardsDefended);
+            stats.push_back(TowersAssaulted);
+            stats.push_back(TowersDefended);
+            stats.push_back(MinesCaptured);
         }
 
         uint32 GetAttr1() const final override { return GraveyardsAssaulted; }
@@ -1615,8 +1614,8 @@ class BattlegroundAV : public Battleground
         void StartingEventCloseDoors() override;
         void StartingEventOpenDoors() override;
 
-        void RemovePlayer(Player* player, uint64 guid, uint32 team) override;
-        void HandleAreaTrigger(Player* player, uint32 trigger) override;
+        void RemovePlayer(Player* player, ObjectGuid guid, uint32 team) override;
+        void HandleAreaTrigger(Player* player, uint32 trigger, bool entered) override;
         bool SetupBattleground() override;
         void ResetBGSubclass() override;
 
@@ -1672,7 +1671,7 @@ class BattlegroundAV : public Battleground
         void ChangeMineOwner(uint8 mine, uint32 team, bool initial=false);
 
         /*worldstates*/
-        void FillInitialWorldStates(WorldPacket& data) override;
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
         void SendMineWorldStates(uint32 mine);
         void UpdateNodeWorldState(BG_AV_Nodes node);
 

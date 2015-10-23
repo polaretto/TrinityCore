@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -20,7 +20,8 @@
 #define DBCSTORE_H
 
 #include "DBCFileLoader.h"
-#include "Logging/Log.h"
+#include "DBStorageIterator.h"
+#include "Log.h"
 #include "Field.h"
 #include "DatabaseWorkerPool.h"
 #include "Implementation/WorldDatabase.h"
@@ -72,8 +73,11 @@ private:
 template<class T>
 class DBCStorage
 {
-    typedef std::list<char*> StringPoolList;
+        typedef std::list<char*> StringPoolList;
+
     public:
+        typedef DBStorageIterator<T> iterator;
+
         explicit DBCStorage(char const* f)
             : fmt(f), nCount(0), fieldCount(0), dataTable(NULL)
         {
@@ -87,6 +91,13 @@ class DBCStorage
             return (id >= nCount) ? NULL : indexTable.asT[id];
         }
 
+        T const* AssertEntry(uint32 id) const
+        {
+            T const* entry = LookupEntry(id);
+            ASSERT(entry);
+            return entry;
+        }
+
         uint32  GetNumRows() const { return nCount; }
         char const* GetFormat() const { return fmt; }
         uint32 GetFieldCount() const { return fieldCount; }
@@ -94,7 +105,7 @@ class DBCStorage
         bool Load(char const* fn, SqlDbc* sql)
         {
             DBCFileLoader dbc;
-            // Check if load was sucessful, only then continue
+            // Check if load was successful, only then continue
             if (!dbc.Load(fn, fmt))
                 return false;
 
@@ -186,6 +197,10 @@ class DBCStorage
                                         *reinterpret_cast<uint8*>(&sqlDataTable[offset]) = uint8(0);
                                         offset += 1;
                                         break;
+                                    case FT_LONG:
+                                        *reinterpret_cast<uint64*>(&sqlDataTable[offset]) = uint64(0);
+                                        offset += 8;
+                                        break;
                                     case FT_STRING:
                                         // Beginning of the pool - empty string
                                         *reinterpret_cast<char**>(&sqlDataTable[offset]) = stringPoolList.back();
@@ -210,6 +225,10 @@ class DBCStorage
                                     case FT_BYTE:
                                         *reinterpret_cast<uint8*>(&sqlDataTable[offset]) = fields[sqlColumnNumber].GetUInt8();
                                         offset += 1;
+                                        break;
+                                    case FT_LONG:
+                                        *reinterpret_cast<uint64*>(&sqlDataTable[offset]) = fields[sqlColumnNumber].GetUInt64();
+                                        offset += 8;
                                         break;
                                     case FT_STRING:
                                         TC_LOG_ERROR("server.loading", "Unsupported data type in table '%s' at char %d", sql->sqlTableName.c_str(), columnNumber);
@@ -280,6 +299,9 @@ class DBCStorage
 
             nCount = 0;
         }
+
+        iterator begin() { return iterator(indexTable.asT, nCount); }
+        iterator end() { return iterator(indexTable.asT, nCount, nCount); }
 
     private:
         char const* fmt;

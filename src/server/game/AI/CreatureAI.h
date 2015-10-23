@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -78,8 +78,8 @@ class CreatureAI : public UnitAI
         Creature* DoSummonFlyer(uint32 entry, WorldObject* obj, float flightZ, float radius = 5.0f, uint32 despawnTime = 30000, TempSummonType summonType = TEMPSUMMON_CORPSE_TIMED_DESPAWN);
 
     public:
-        void Talk(uint8 id, WorldObject const* whisperTarget = NULL);
-        void TalkToMap(uint8 id, WorldObject const* whisperTarget = NULL);
+        void Talk(uint8 id, WorldObject const* whisperTarget = nullptr);
+
         explicit CreatureAI(Creature* creature) : UnitAI(creature), me(creature), m_MoveInLineOfSight_locked(false) { }
 
         virtual ~CreatureAI() { }
@@ -88,6 +88,9 @@ class CreatureAI : public UnitAI
 
         // Called if IsVisible(Unit* who) is true at each who move, reaction at visibility zone enter
         void MoveInLineOfSight_Safe(Unit* who);
+
+        // Trigger Creature "Alert" state (creature can see stealthed unit)
+        void TriggerAlert(Unit const* who) const;
 
         // Called in Creature::Update when deathstate = DEAD. Inherited classes may maniuplate the ability to respawn based on scripted events.
         virtual bool CanRespawn() { return true; }
@@ -119,7 +122,7 @@ class CreatureAI : public UnitAI
 
         // Called when the creature is target of hostile action: swing, hostile spell landed, fear/etc)
         virtual void AttackedBy(Unit* /*attacker*/) { }
-        virtual bool IsEscorted() { return false; }
+        virtual bool IsEscorted() const { return false; }
 
         // Called when creature is spawned or respawned (for reseting variables)
         virtual void JustRespawned() { Reset(); }
@@ -165,14 +168,12 @@ class CreatureAI : public UnitAI
 
         /// == Fields =======================================
 
-        // Pointer to controlled by AI creature
-        //Creature* const me;
-
         virtual void PassengerBoarded(Unit* /*passenger*/, int8 /*seatId*/, bool /*apply*/) { }
 
         virtual void OnSpellClick(Unit* /*clicker*/, bool& /*result*/) { }
 
         virtual bool CanSeeAlways(WorldObject const* /*obj*/) { return false; }
+
     protected:
         virtual void MoveInLineOfSight(Unit* /*who*/);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -23,10 +23,10 @@ SDComment:
 SDCategory: Npc
 EndScriptData */
 
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedEscortAI.h"
 #include "Group.h"
-#include "Player.h"
 
 enum Points
 {
@@ -35,7 +35,6 @@ enum Points
 };
 
 npc_escortAI::npc_escortAI(Creature* creature) : ScriptedAI(creature),
-    m_uiPlayerGUID(0),
     m_uiWPWaitTimer(2500),
     m_uiPlayerCheckTimer(1000),
     m_uiEscortState(STATE_ESCORT_NONE),
@@ -73,7 +72,7 @@ bool npc_escortAI::AssistPlayerInCombat(Unit* who)
         return false;
 
     //experimental (unknown) flag not present
-    if (!(me->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_AID_PLAYERS))
+    if (!(me->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_CAN_ASSIST))
         return false;
 
     //not a player
@@ -121,7 +120,13 @@ void npc_escortAI::MoveInLineOfSight(Unit* who)
             {
                 if (!me->GetVictim())
                 {
-                    who->RemoveAurasByType(SPELL_AURA_MOD_STEALTH);
+                    // Clear distracted state on combat
+                    if (me->HasUnitState(UNIT_STATE_DISTRACTED))
+                    {
+                        me->ClearUnitState(UNIT_STATE_DISTRACTED);
+                        me->GetMotionMaster()->Clear();
+                    }
+
                     AttackStart(who);
                 }
                 else if (me->GetMap()->IsDungeon())
@@ -279,7 +284,7 @@ void npc_escortAI::UpdateAI(uint32 diff)
     }
 
     //Check if player or any member of his group is within range
-    if (HasEscortState(STATE_ESCORT_ESCORTING) && m_uiPlayerGUID && !me->GetVictim() && !HasEscortState(STATE_ESCORT_RETURNING))
+    if (HasEscortState(STATE_ESCORT_ESCORTING) && !m_uiPlayerGUID.IsEmpty() && !me->GetVictim() && !HasEscortState(STATE_ESCORT_RETURNING))
     {
         if (m_uiPlayerCheckTimer <= diff)
         {
@@ -430,7 +435,7 @@ void npc_escortAI::SetRun(bool on)
 }
 
 /// @todo get rid of this many variables passed in function.
-void npc_escortAI::Start(bool isActiveAttacker /* = true*/, bool run /* = false */, uint64 playerGUID /* = 0 */, Quest const* quest /* = NULL */, bool instantRespawn /* = false */, bool canLoopPath /* = false */, bool resetWaypoints /* = true */)
+void npc_escortAI::Start(bool isActiveAttacker /* = true*/, bool run /* = false */, ObjectGuid playerGUID /* = 0 */, Quest const* quest /* = NULL */, bool instantRespawn /* = false */, bool canLoopPath /* = false */, bool resetWaypoints /* = true */)
 {
     if (me->GetVictim())
     {
@@ -479,14 +484,14 @@ void npc_escortAI::Start(bool isActiveAttacker /* = true*/, bool run /* = false 
     }
 
     //disable npcflags
-    me->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
+    me->SetUInt64Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
     if (me->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC))
     {
         HasImmuneToNPCFlags = true;
         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
     }
 
-    TC_LOG_DEBUG("scripts", "EscortAI started with " UI64FMTD " waypoints. ActiveAttacker = %d, Run = %d, PlayerGUID = " UI64FMTD "", uint64(WaypointList.size()), m_bIsActiveAttacker, m_bIsRunning, m_uiPlayerGUID);
+    TC_LOG_DEBUG("scripts", "EscortAI started with " UI64FMTD " waypoints. ActiveAttacker = %d, Run = %d, %s", uint64(WaypointList.size()), m_bIsActiveAttacker, m_bIsRunning, m_uiPlayerGUID.ToString().c_str());
 
     CurrentWP = WaypointList.begin();
 

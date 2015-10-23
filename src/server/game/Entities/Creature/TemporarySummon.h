@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -48,19 +48,19 @@ class TempSummon : public Creature
         virtual void UnSummon(uint32 msTime = 0);
         void RemoveFromWorld() override;
         void SetTempSummonType(TempSummonType type);
-        void SaveToDB(uint32 /*mapid*/, uint8 /*spawnMask*/, uint32 /*phaseMask*/) override { }
+        void SaveToDB(uint32 /*mapid*/, uint32 /*spawnMask*/, uint32 /*phaseMask*/) override { }
         Unit* GetSummoner() const;
         Creature* GetSummonerCreatureBase() const;
-        uint64 GetSummonerGUID() const { return m_summonerGUID; }
+        ObjectGuid GetSummonerGUID() const { return m_summonerGUID; }
         TempSummonType const& GetSummonType() { return m_type; }
-        uint32 GetTimer() { return m_timer; }
+        uint32 GetTimer() const { return m_timer; }
 
         const SummonPropertiesEntry* const m_Properties;
     private:
         TempSummonType m_type;
         uint32 m_timer;
         uint32 m_lifetime;
-        uint64 m_summonerGUID;
+        ObjectGuid m_summonerGUID;
 };
 
 class Minion : public TempSummon

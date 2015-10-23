@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -128,50 +128,6 @@ public:
     }
 };
 
-/*######
-## npc_hira_snowdawn
-######*/
-
-enum HiraSnowdawn
-{
-    SPELL_COLD_WEATHER_FLYING              = 54197
-};
-
-#define GOSSIP_TEXT_TRAIN_HIRA "I seek training to ride a steed."
-
-class npc_hira_snowdawn : public CreatureScript
-{
-public:
-    npc_hira_snowdawn() : CreatureScript("npc_hira_snowdawn") { }
-
-    bool OnGossipHello(Player* player, Creature* creature) override
-    {
-        if (!creature->IsVendor() || !creature->IsTrainer())
-            return false;
-
-        player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_TRAIN_HIRA, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRAIN);
-
-        if (player->getLevel() >= 80 && player->HasSpell(SPELL_COLD_WEATHER_FLYING))
-            player->ADD_GOSSIP_ITEM(GOSSIP_ICON_VENDOR, GOSSIP_TEXT_BROWSE_GOODS, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_TRADE);
-
-        player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
-
-        return true;
-    }
-
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
-    {
-        player->PlayerTalkClass->ClearMenus();
-        if (action == GOSSIP_ACTION_TRAIN)
-            player->GetSession()->SendTrainerList(creature->GetGUID());
-
-        if (action == GOSSIP_ACTION_TRADE)
-            player->GetSession()->SendListInventory(creature->GetGUID());
-
-        return true;
-    }
-};
-
 enum MinigobData
 {
     ZONE_DALARAN            = 4395,
@@ -228,7 +184,7 @@ class npc_minigob_manabonk : public CreatureScript
             {
                 SQLTransaction trans = CharacterDatabase.BeginTransaction();
                 int16 deliverDelay = irand(MAIL_DELIVER_DELAY_MIN, MAIL_DELIVER_DELAY_MAX);
-                MailDraft(MAIL_MINIGOB_ENTRY, true).SendMailTo(trans, MailReceiver(player), MailSender(MAIL_CREATURE, me->GetEntry()), MAIL_CHECK_MASK_NONE, deliverDelay);
+                MailDraft(MAIL_MINIGOB_ENTRY, true).SendMailTo(trans, MailReceiver(player), MailSender(MAIL_CREATURE, uint64(me->GetEntry())), MAIL_CHECK_MASK_NONE, deliverDelay);
                 CharacterDatabase.CommitTransaction(trans);
             }
 
@@ -284,7 +240,6 @@ class npc_minigob_manabonk : public CreatureScript
 
 void AddSC_dalaran()
 {
-    new npc_mageguard_dalaran;
-    new npc_hira_snowdawn;
+    new npc_mageguard_dalaran();
     new npc_minigob_manabonk();
 }

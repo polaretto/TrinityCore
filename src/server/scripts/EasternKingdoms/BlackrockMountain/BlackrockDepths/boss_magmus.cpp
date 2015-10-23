@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -96,7 +96,7 @@ class boss_magmus : public CreatureScript
             void JustDied(Unit* /*killer*/) override
             {
                 if (InstanceScript* instance = me->GetInstanceScript())
-                    instance->HandleGameObject(instance->GetData64(DATA_THRONE_DOOR), true);
+                    instance->HandleGameObject(instance->GetGuidData(DATA_THRONE_DOOR), true);
             }
 
         private:

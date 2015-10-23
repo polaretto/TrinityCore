@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -85,7 +85,7 @@ class boss_anomalus : public CreatureScript
             {
                 Phase = 0;
                 uiSparkTimer = 5000;
-                uiChaoticRiftGUID = 0;
+                uiChaoticRiftGUID.Clear();
                 chaosTheory = true;
             }
 
@@ -93,28 +93,28 @@ class boss_anomalus : public CreatureScript
 
             uint8 Phase;
             uint32 uiSparkTimer;
-            uint64 uiChaoticRiftGUID;
+            ObjectGuid uiChaoticRiftGUID;
             bool chaosTheory;
 
             void Reset() override
             {
                 Initialize();
 
-                instance->SetData(DATA_ANOMALUS_EVENT, NOT_STARTED);
+                instance->SetBossState(DATA_ANOMALUS, NOT_STARTED);
             }
 
             void EnterCombat(Unit* /*who*/) override
             {
                 Talk(SAY_AGGRO);
 
-                instance->SetData(DATA_ANOMALUS_EVENT, IN_PROGRESS);
+                instance->SetBossState(DATA_ANOMALUS, IN_PROGRESS);
             }
 
             void JustDied(Unit* /*killer*/) override
             {
                 Talk(SAY_DEATH);
 
-                instance->SetData(DATA_ANOMALUS_EVENT, DONE);
+                instance->SetBossState(DATA_ANOMALUS, DONE);
             }
 
             uint32 GetData(uint32 type) const override
@@ -145,19 +145,19 @@ class boss_anomalus : public CreatureScript
 
                 if (me->HasAura(SPELL_RIFT_SHIELD))
                 {
-                    if (uiChaoticRiftGUID)
+                    if (!uiChaoticRiftGUID.IsEmpty())
                     {
                         Creature* Rift = ObjectAccessor::GetCreature(*me, uiChaoticRiftGUID);
                         if (Rift && Rift->isDead())
                         {
                             me->RemoveAurasDueToSpell(SPELL_RIFT_SHIELD);
-                            uiChaoticRiftGUID = 0;
+                            uiChaoticRiftGUID.Clear();
                         }
                         return;
                     }
                 }
                 else
-                    uiChaoticRiftGUID = 0;
+                    uiChaoticRiftGUID.Clear();
 
                 if ((Phase == 0) && HealthBelowPct(50))
                 {
@@ -232,7 +232,7 @@ class npc_chaotic_rift : public CreatureScript
 
                 if (uiChaoticEnergyBurstTimer <= diff)
                 {
-                    Creature* Anomalus = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_ANOMALUS));
+                    Creature* Anomalus = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ANOMALUS));
                     if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
                     {
                         if (Anomalus && Anomalus->HasAura(SPELL_RIFT_SHIELD))
@@ -250,7 +250,7 @@ class npc_chaotic_rift : public CreatureScript
                     if (Creature* Wraith = me->SummonCreature(NPC_CRAZED_MANA_WRAITH, me->GetPositionX() + 1, me->GetPositionY() + 1, me->GetPositionZ(), 0, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 1000))
                         if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
                             Wraith->AI()->AttackStart(target);
-                    Creature* Anomalus = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_ANOMALUS));
+                    Creature* Anomalus = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ANOMALUS));
                     if (Anomalus && Anomalus->HasAura(SPELL_RIFT_SHIELD))
                         uiSummonCrazedManaWraithTimer = 5000;
                     else

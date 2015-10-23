@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,16 +19,15 @@
 #include "GameEventMgr.h"
 #include "World.h"
 #include "ObjectMgr.h"
-#include "WorldPacket.h"
 #include "PoolMgr.h"
 #include "Language.h"
 #include "Log.h"
 #include "MapManager.h"
-#include "GossipDef.h"
 #include "Player.h"
 #include "BattlegroundMgr.h"
 #include "UnitAI.h"
 #include "GameObjectAI.h"
+#include "WorldStatePackets.h"
 
 bool GameEventMgr::CheckOneGameEvent(uint16 entry) const
 {
@@ -372,7 +371,7 @@ void GameEventMgr::LoadFromDB()
             {
                 Field* fields = result->Fetch();
 
-                uint32 guid    = fields[0].GetUInt32();
+                ObjectGuid::LowType guid = fields[0].GetUInt64();
                 int16 event_id = fields[1].GetInt8();
 
                 int32 internal_event_id = mGameEvent.size() + event_id - 1;
@@ -380,7 +379,7 @@ void GameEventMgr::LoadFromDB()
                 CreatureData const* data = sObjectMgr->GetCreatureData(guid);
                 if (!data)
                 {
-                    TC_LOG_ERROR("sql.sql", "`game_event_creature` contains creature (GUID: %u) not found in `creature` table.", guid);
+                    TC_LOG_ERROR("sql.sql", "`game_event_creature` contains creature (GUID: " UI64FMTD ") not found in `creature` table.", guid);
                     continue;
                 }
 
@@ -418,7 +417,7 @@ void GameEventMgr::LoadFromDB()
             {
                 Field* fields = result->Fetch();
 
-                uint32 guid    = fields[0].GetUInt32();
+                ObjectGuid::LowType guid = fields[0].GetUInt64();
                 int16 event_id = fields[1].GetInt8();
 
                 int32 internal_event_id = mGameEvent.size() + event_id - 1;
@@ -426,7 +425,7 @@ void GameEventMgr::LoadFromDB()
                 GameObjectData const* data = sObjectMgr->GetGOData(guid);
                 if (!data)
                 {
-                    TC_LOG_ERROR("sql.sql", "`game_event_gameobject` contains gameobject (GUID: %u) not found in `gameobject` table.", guid);
+                    TC_LOG_ERROR("sql.sql", "`game_event_gameobject` contains gameobject (GUID: " UI64FMTD ") not found in `gameobject` table.", guid);
                     continue;
                 }
 
@@ -464,7 +463,7 @@ void GameEventMgr::LoadFromDB()
             {
                 Field* fields = result->Fetch();
 
-                uint32 guid     = fields[0].GetUInt32();
+                ObjectGuid::LowType guid = fields[0].GetUInt64();
                 uint32 entry    = fields[1].GetUInt32();
                 uint16 event_id = fields[2].GetUInt8();
 
@@ -486,13 +485,13 @@ void GameEventMgr::LoadFromDB()
                     int8 equipId = static_cast<int8>(newModelEquipSet.equipment_id);
                     if (!sObjectMgr->GetEquipmentInfo(entry, equipId))
                     {
-                        TC_LOG_ERROR("sql.sql", "Table `game_event_model_equip` have creature (Guid: %u, entry: %u) with equipment_id %u not found in table `creature_equip_template`, set to no equipment.",
+                        TC_LOG_ERROR("sql.sql", "Table `game_event_model_equip` have creature (Guid: " UI64FMTD ", entry: %u) with equipment_id %u not found in table `creature_equip_template`, set to no equipment.",
                                          guid, entry, newModelEquipSet.equipment_id);
                         continue;
                     }
                 }
 
-                equiplist.push_back(std::pair<uint32, ModelEquip>(guid, newModelEquipSet));
+                equiplist.push_back(std::pair<ObjectGuid::LowType, ModelEquip>(guid, newModelEquipSet));
 
                 ++count;
             }
@@ -713,9 +712,9 @@ void GameEventMgr::LoadFromDB()
             {
                 Field* fields = result->Fetch();
 
-                uint32 guid     = fields[0].GetUInt32();
+                ObjectGuid::LowType guid = fields[0].GetUInt64();
                 uint16 event_id = fields[1].GetUInt8();
-                uint32 npcflag  = fields[2].GetUInt32();
+                uint64 npcflag  = fields[2].GetUInt64();
 
                 if (event_id >= mGameEvent.size())
                 {
@@ -777,8 +776,8 @@ void GameEventMgr::LoadFromDB()
     {
         uint32 oldMSTime = getMSTime();
 
-        //                                               0           1     2     3         4         5
-        QueryResult result = WorldDatabase.Query("SELECT eventEntry, guid, item, maxcount, incrtime, ExtendedCost FROM game_event_npc_vendor ORDER BY guid, slot ASC");
+        //                                               0           1     2     3         4         5             6
+        QueryResult result = WorldDatabase.Query("SELECT eventEntry, guid, item, maxcount, incrtime, ExtendedCost, type FROM game_event_npc_vendor ORDER BY guid, slot ASC");
 
         if (!result)
             TC_LOG_INFO("server.loading", ">> Loaded 0 vendor additions in game events. DB table `game_event_npc_vendor` is empty.");
@@ -799,11 +798,12 @@ void GameEventMgr::LoadFromDB()
 
                 NPCVendorList& vendors = mGameEventVendors[event_id];
                 NPCVendorEntry newEntry;
-                uint32 guid = fields[1].GetUInt32();
+                ObjectGuid::LowType guid = fields[1].GetUInt64();
                 newEntry.item = fields[2].GetUInt32();
                 newEntry.maxcount = fields[3].GetUInt32();
                 newEntry.incrtime = fields[4].GetUInt32();
                 newEntry.ExtendedCost = fields[5].GetUInt32();
+                newEntry.Type = fields[6].GetUInt8();
                 // get the event npc flag for checking if the npc will be vendor during the event or not
                 uint32 event_npc_flag = 0;
                 NPCFlagList& flist = mGameEventNPCFlags[event_id];
@@ -822,7 +822,7 @@ void GameEventMgr::LoadFromDB()
                     newEntry.entry = data->id;
 
                 // check validity with event's npcflag
-                if (!sObjectMgr->IsVendorItemValid(newEntry.entry, newEntry.item, newEntry.maxcount, newEntry.incrtime, newEntry.ExtendedCost, NULL, NULL, event_npc_flag))
+                if (!sObjectMgr->IsVendorItemValid(newEntry.entry, newEntry.item, newEntry.maxcount, newEntry.incrtime, newEntry.ExtendedCost, newEntry.Type, NULL, NULL, event_npc_flag))
                     continue;
 
                 vendors.push_back(newEntry);
@@ -915,10 +915,10 @@ void GameEventMgr::LoadFromDB()
     }
 }
 
-uint32 GameEventMgr::GetNPCFlag(Creature* cr)
+uint64 GameEventMgr::GetNPCFlag(Creature* cr)
 {
-    uint32 mask = 0;
-    uint32 guid = cr->GetDBTableGUIDLow();
+    uint64 mask = 0;
+    ObjectGuid::LowType guid = cr->GetSpawnId();
 
     for (ActiveEvents::iterator e_itr = m_ActiveEvents.begin(); e_itr != m_ActiveEvents.end(); ++e_itr)
     {
@@ -1116,25 +1116,34 @@ void GameEventMgr::ApplyNewEvent(uint16 event_id)
 
 void GameEventMgr::UpdateEventNPCFlags(uint16 event_id)
 {
+    std::unordered_map<uint32, std::unordered_set<ObjectGuid::LowType>> creaturesByMap;
+
     // go through the creatures whose npcflags are changed in the event
     for (NPCFlagList::iterator itr = mGameEventNPCFlags[event_id].begin(); itr != mGameEventNPCFlags[event_id].end(); ++itr)
-    {
         // get the creature data from the low guid to get the entry, to be able to find out the whole guid
         if (CreatureData const* data = sObjectMgr->GetCreatureData(itr->first))
+            creaturesByMap[data->mapid].insert(itr->first);
+
+    for (auto const& p : creaturesByMap)
+    {
+        sMapMgr->DoForAllMapsWithMapId(p.first, [this, &p](Map* map)
         {
-            Creature* cr = HashMapHolder<Creature>::Find(MAKE_NEW_GUID(itr->first, data->id, HIGHGUID_UNIT));
-            // if we found the creature, modify its npcflag
-            if (cr)
+            for (auto& spawnId : p.second)
             {
-                uint32 npcflag = GetNPCFlag(cr);
-                if (const CreatureTemplate* ci = cr->GetCreatureTemplate())
-                    npcflag |= ci->npcflag;
-                cr->SetUInt32Value(UNIT_NPC_FLAGS, npcflag);
-                // reset gossip options, since the flag change might have added / removed some
-                //cr->ResetGossipOptions();
+                auto creatureBounds = map->GetCreatureBySpawnIdStore().equal_range(spawnId);
+                for (auto itr = creatureBounds.first; itr != creatureBounds.second; ++itr)
+                {
+                    Creature* creature = itr->second;
+                    uint32 npcflag = GetNPCFlag(creature);
+                    if (CreatureTemplate const* creatureTemplate = creature->GetCreatureTemplate())
+                        npcflag |= creatureTemplate->npcflag;
+
+                    creature->SetUInt64Value(UNIT_NPC_FLAGS, npcflag);
+                    // reset gossip options, since the flag change might have added / removed some
+                    //cr->ResetGossipOptions();
+                }
             }
-            // if we didn't find it, then the npcflag will be updated when the creature is loaded
-        }
+        });
     }
 }
 
@@ -1151,9 +1160,9 @@ void GameEventMgr::UpdateEventNPCVendor(uint16 event_id, bool activate)
     for (NPCVendorList::iterator itr = mGameEventVendors[event_id].begin(); itr != mGameEventVendors[event_id].end(); ++itr)
     {
         if (activate)
-            sObjectMgr->AddVendorItem(itr->entry, itr->item, itr->maxcount, itr->incrtime, itr->ExtendedCost, false);
+            sObjectMgr->AddVendorItem(itr->entry, itr->item, itr->maxcount, itr->incrtime, itr->ExtendedCost, itr->Type, false);
         else
-            sObjectMgr->RemoveVendorItem(itr->entry, itr->item, false);
+            sObjectMgr->RemoveVendorItem(itr->entry, itr->item, itr->Type, false);
     }
 }
 
@@ -1253,8 +1262,16 @@ void GameEventMgr::GameEventUnspawn(int16 event_id)
         {
             sObjectMgr->RemoveCreatureFromGrid(*itr, data);
 
-            if (Creature* creature = ObjectAccessor::GetObjectInWorld(MAKE_NEW_GUID(*itr, data->id, HIGHGUID_UNIT), (Creature*)NULL))
-                creature->AddObjectToRemoveList();
+            sMapMgr->DoForAllMapsWithMapId(data->mapid, [&itr](Map* map)
+            {
+                auto creatureBounds = map->GetCreatureBySpawnIdStore().equal_range(*itr);
+                for (auto itr2 = creatureBounds.first; itr2 != creatureBounds.second;)
+                {
+                    Creature* creature = itr2->second;
+                    ++itr2;
+                    creature->AddObjectToRemoveList();
+                }
+            });
         }
     }
 
@@ -1275,10 +1292,19 @@ void GameEventMgr::GameEventUnspawn(int16 event_id)
         {
             sObjectMgr->RemoveGameobjectFromGrid(*itr, data);
 
-            if (GameObject* pGameobject = ObjectAccessor::GetObjectInWorld(MAKE_NEW_GUID(*itr, data->id, HIGHGUID_GAMEOBJECT), (GameObject*)NULL))
-                pGameobject->AddObjectToRemoveList();
+            sMapMgr->DoForAllMapsWithMapId(data->mapid, [&itr](Map* map)
+            {
+                auto gameobjectBounds = map->GetGameObjectBySpawnIdStore().equal_range(*itr);
+                for (auto itr2 = gameobjectBounds.first; itr2 != gameobjectBounds.second;)
+                {
+                    GameObject* go = itr2->second;
+                    ++itr2;
+                    go->AddObjectToRemoveList();
+                }
+            });
         }
     }
+
     if (internal_event_id < 0 || internal_event_id >= int32(mGameEventPoolIds.size()))
     {
         TC_LOG_ERROR("gameevent", "GameEventMgr::GameEventUnspawn attempt access to out of range mGameEventPoolIds element %u (size: %zu)", internal_event_id, mGameEventPoolIds.size());
@@ -1301,53 +1327,43 @@ void GameEventMgr::ChangeEquipOrModel(int16 event_id, bool activate)
             continue;
 
         // Update if spawned
-        Creature* creature = ObjectAccessor::GetObjectInWorld(MAKE_NEW_GUID(itr->first, data->id, HIGHGUID_UNIT), (Creature*)NULL);
-        if (creature)
+        sMapMgr->DoForAllMapsWithMapId(data->mapid, [&itr, activate](Map* map)
         {
-            if (activate)
+            auto creatureBounds = map->GetCreatureBySpawnIdStore().equal_range(itr->first);
+            for (auto itr2 = creatureBounds.first; itr2 != creatureBounds.second; ++itr2)
             {
-                itr->second.equipement_id_prev = creature->GetCurrentEquipmentId();
-                itr->second.modelid_prev = creature->GetDisplayId();
-                creature->LoadEquipment(itr->second.equipment_id, true);
-                if (itr->second.modelid > 0 && itr->second.modelid_prev != itr->second.modelid &&
-                    sObjectMgr->GetCreatureModelInfo(itr->second.modelid))
+                Creature* creature = itr2->second;
+                if (activate)
                 {
-                    creature->SetDisplayId(itr->second.modelid);
-                    creature->SetNativeDisplayId(itr->second.modelid);
+                    itr->second.equipement_id_prev = creature->GetCurrentEquipmentId();
+                    itr->second.modelid_prev = creature->GetDisplayId();
+                    creature->LoadEquipment(itr->second.equipment_id, true);
+                    if (itr->second.modelid > 0 && itr->second.modelid_prev != itr->second.modelid &&
+                        sObjectMgr->GetCreatureModelInfo(itr->second.modelid))
+                    {
+                        creature->SetDisplayId(itr->second.modelid);
+                        creature->SetNativeDisplayId(itr->second.modelid);
+                    }
+                }
+                else
+                {
+                    creature->LoadEquipment(itr->second.equipement_id_prev, true);
+                    if (itr->second.modelid_prev > 0 && itr->second.modelid_prev != itr->second.modelid &&
+                        sObjectMgr->GetCreatureModelInfo(itr->second.modelid_prev))
+                    {
+                        creature->SetDisplayId(itr->second.modelid_prev);
+                        creature->SetNativeDisplayId(itr->second.modelid_prev);
+                    }
                 }
             }
-            else
-            {
-                creature->LoadEquipment(itr->second.equipement_id_prev, true);
-                if (itr->second.modelid_prev > 0 && itr->second.modelid_prev != itr->second.modelid &&
-                    sObjectMgr->GetCreatureModelInfo(itr->second.modelid_prev))
-                {
-                    creature->SetDisplayId(itr->second.modelid_prev);
-                    creature->SetNativeDisplayId(itr->second.modelid_prev);
-                }
-            }
-        }
-        else                                                // If not spawned
-        {
-            CreatureData const* data2 = sObjectMgr->GetCreatureData(itr->first);
-            if (data2 && activate)
-            {
-                CreatureTemplate const* cinfo = sObjectMgr->GetCreatureTemplate(data2->id);
-                uint32 displayID = ObjectMgr::ChooseDisplayId(cinfo, data2);
-                sObjectMgr->GetCreatureModelRandomGender(&displayID);
+        });
 
-                if (data2->equipmentId == 0)
-                    itr->second.equipement_id_prev = 0; ///@todo: verify this line
-                else if (data2->equipmentId != -1)
-                    itr->second.equipement_id_prev = data->equipmentId;
-                itr->second.modelid_prev = displayID;
-            }
-        }
         // now last step: put in data
-                                                            // just to have write access to it
         CreatureData& data2 = sObjectMgr->NewOrExistCreatureData(itr->first);
         if (activate)
         {
+            itr->second.modelid_prev = data2.displayid;
+            itr->second.equipement_id_prev = data2.equipmentId;
             data2.displayid = itr->second.modelid;
             data2.equipmentId = itr->second.equipment_id;
         }
@@ -1386,7 +1402,7 @@ bool GameEventMgr::hasGameObjectQuestActiveEventExcept(uint32 quest_id, uint16 e
     }
     return false;
 }
-bool GameEventMgr::hasCreatureActiveEventExcept(uint32 creature_id, uint16 event_id)
+bool GameEventMgr::hasCreatureActiveEventExcept(ObjectGuid::LowType creature_id, uint16 event_id)
 {
     for (ActiveEvents::iterator e_itr = m_ActiveEvents.begin(); e_itr != m_ActiveEvents.end(); ++e_itr)
     {
@@ -1402,7 +1418,7 @@ bool GameEventMgr::hasCreatureActiveEventExcept(uint32 creature_id, uint16 event
     }
     return false;
 }
-bool GameEventMgr::hasGameObjectActiveEventExcept(uint32 go_id, uint16 event_id)
+bool GameEventMgr::hasGameObjectActiveEventExcept(ObjectGuid::LowType go_id, uint16 event_id)
 {
     for (ActiveEvents::iterator e_itr = m_ActiveEvents.begin(); e_itr != m_ActiveEvents.end(); ++e_itr)
     {
@@ -1483,11 +1499,13 @@ void GameEventMgr::UpdateWorldStates(uint16 event_id, bool Activate)
         if (bgTypeId != BATTLEGROUND_TYPE_NONE)
         {
             BattlemasterListEntry const* bl = sBattlemasterListStore.LookupEntry(bgTypeId);
-            if (bl && bl->HolidayWorldStateId)
+            if (bl && bl->HolidayWorldState)
             {
-                WorldPacket data;
-                sBattlegroundMgr->BuildUpdateWorldStatePacket(&data, bl->HolidayWorldStateId, Activate ? 1 : 0);
-                sWorld->SendGlobalMessage(&data);
+                WorldPackets::WorldState::UpdateWorldState worldstate;
+                worldstate.VariableID = bl->HolidayWorldState;
+                worldstate.Value = Activate;
+                //worldstate.Hidden = false;
+                sWorld->SendGlobalMessage(worldstate.Write());
             }
         }
     }
@@ -1595,24 +1613,43 @@ void GameEventMgr::SendWorldStateUpdate(Player* player, uint16 event_id)
     }
 }
 
+class GameEventAIHookWorker
+{
+public:
+    GameEventAIHookWorker(uint16 eventId, bool activate) : _eventId(eventId), _activate(activate) { }
+
+    void Visit(std::unordered_map<ObjectGuid, Creature*>& creatureMap)
+    {
+        for (auto const& p : creatureMap)
+            if (p.second->IsInWorld() && p.second->IsAIEnabled)
+                p.second->AI()->sOnGameEvent(_activate, _eventId);
+    }
+
+    void Visit(std::unordered_map<ObjectGuid, GameObject*>& gameObjectMap)
+    {
+        for (auto const& p : gameObjectMap)
+            if (p.second->IsInWorld())
+                p.second->AI()->OnGameEvent(_activate, _eventId);
+    }
+
+    template<class T>
+    void Visit(std::unordered_map<ObjectGuid, T*>&) { }
+
+private:
+    uint16 _eventId;
+    bool _activate;
+};
+
 void GameEventMgr::RunSmartAIScripts(uint16 event_id, bool activate)
 {
     //! Iterate over every supported source type (creature and gameobject)
     //! Not entirely sure how this will affect units in non-loaded grids.
+    sMapMgr->DoForAllMaps([event_id, activate](Map* map)
     {
-        boost::shared_lock<boost::shared_mutex> lock(*HashMapHolder<Creature>::GetLock());
-        HashMapHolder<Creature>::MapType const& m = ObjectAccessor::GetCreatures();
-        for (HashMapHolder<Creature>::MapType::const_iterator iter = m.begin(); iter != m.end(); ++iter)
-            if (iter->second->IsInWorld())
-                iter->second->AI()->sOnGameEvent(activate, event_id);
-    }
-    {
-        boost::shared_lock<boost::shared_mutex> lock(*HashMapHolder<GameObject>::GetLock());
-        HashMapHolder<GameObject>::MapType const& m = ObjectAccessor::GetGameObjects();
-        for (HashMapHolder<GameObject>::MapType::const_iterator iter = m.begin(); iter != m.end(); ++iter)
-            if (iter->second->IsInWorld())
-                iter->second->AI()->OnGameEvent(activate, event_id);
-    }
+        GameEventAIHookWorker worker(event_id, activate);
+        TypeContainerVisitor<GameEventAIHookWorker, MapStoredObjectTypesContainer> visitor(worker);
+        visitor.Visit(map->GetObjectsStore());
+    });
 }
 
 uint16 GameEventMgr::GetEventIdForQuest(Quest const* quest) const
