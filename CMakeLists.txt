@@ -82,19 +82,24 @@ add_subdirectory(dep)
 # add core sources
 add_subdirectory(src)
 
-# Download and unpack gtest at configure time
-configure_file(gtest-CMakeLists.txt gtest-download/CMakeLists.txt)
-execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gtest-download )
-execute_process(COMMAND ${CMAKE_COMMAND} --build .
-  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/gtest-download )
- 
-# Add gtest directly to our build
-add_subdirectory(${CMAKE_BINARY_DIR}/gtest-src
-                 ${CMAKE_BINARY_DIR}/gtest-build
-                 EXCLUDE_FROM_ALL )
- 
-# Add the gtest include directory, since gtest
-# doesn't add that dependency to its gtest target
-target_include_directories(gtest INTERFACE
-  "${CMAKE_BINARY_DIR}/gtest-src/include" )
+# Enable testing
+set(BUILD_TESTING ON)
+include(CTest)
+
+# Download gtest at configure time
+# include(add_dl_project.cmake)
+# add_dl_project(PROJ     gtest
+#               URL      https://googletest.googlecode.com/files/gtest-1.7.0.zip
+#               URL_HASH SHA1=f85f6d2481e2c6c4a18539e391aa4ea8ab0394af
+#               EXCLUDE_FROM_ALL
+# )
+
+# gtest doesn't add a public include directory to the target for
+# its headers, so we have to explicitly add it ourselves so that
+# client code finds gtest/gtest.h
+# target_include_directories(gtest INTERFACE "${CMAKE_BINARY_DIR}/gtest-src/include")
+
+# Example for how to define a test which uses gtest
+# add_executable(mytest tester.cpp)
+# target_link_libraries(mytest gtest_main)
+# add_test(NAME mytest COMMAND mytest)
