@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -39,13 +39,6 @@ class instance_halls_of_lightning : public InstanceMapScript
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
                 LoadDoorData(doorData);
-
-                GeneralBjarngrimGUID = 0;
-                VolkhanGUID          = 0;
-                IonarGUID            = 0;
-                LokenGUID            = 0;
-
-                LokenGlobeGUID       = 0;
             }
 
             void OnCreatureCreate(Creature* creature) override
@@ -119,7 +112,7 @@ class instance_halls_of_lightning : public InstanceMapScript
                 return true;
             }
 
-            uint64 GetData64(uint32 type) const override
+            ObjectGuid GetGuidData(uint32 type) const override
             {
                 switch (type)
                 {
@@ -134,16 +127,16 @@ class instance_halls_of_lightning : public InstanceMapScript
                     default:
                         break;
                 }
-                return 0;
+                return ObjectGuid::Empty;
             }
 
         protected:
-            uint64 GeneralBjarngrimGUID;
-            uint64 VolkhanGUID;
-            uint64 IonarGUID;
-            uint64 LokenGUID;
+            ObjectGuid GeneralBjarngrimGUID;
+            ObjectGuid VolkhanGUID;
+            ObjectGuid IonarGUID;
+            ObjectGuid LokenGUID;
 
-            uint64 LokenGlobeGUID;
+            ObjectGuid LokenGlobeGUID;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

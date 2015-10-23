@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -126,15 +126,15 @@ bool GrandChampionsOutVehicle(Creature* me)
     if (!instance)
         return false;
 
-    Creature* pGrandChampion1 = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_GRAND_CHAMPION_1));
-    Creature* pGrandChampion2 = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_GRAND_CHAMPION_2));
-    Creature* pGrandChampion3 = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_GRAND_CHAMPION_3));
+    Creature* pGrandChampion1 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_GRAND_CHAMPION_1));
+    Creature* pGrandChampion2 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_GRAND_CHAMPION_2));
+    Creature* pGrandChampion3 = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_GRAND_CHAMPION_3));
 
     if (pGrandChampion1 && pGrandChampion2 && pGrandChampion3)
     {
-        if (!pGrandChampion1->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT) &&
-            !pGrandChampion2->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT) &&
-            !pGrandChampion3->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+        if (!pGrandChampion1->m_movementInfo.transport.guid &&
+            !pGrandChampion2->m_movementInfo.transport.guid &&
+            !pGrandChampion3->m_movementInfo.transport.guid)
             return true;
     }
 
@@ -208,7 +208,7 @@ public:
             }
 
             if (uiType <= 3)
-                Start(false, true, 0, NULL);
+                Start(false, true);
         }
 
         void WaypointReached(uint32 waypointId) override
@@ -254,7 +254,7 @@ public:
             if (uiChargeTimer <= uiDiff)
             {
                 Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                if (me->GetMap()->IsDungeon() && !players.isEmpty())
+                if (!players.isEmpty())
                 {
                     for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
                     {
@@ -281,7 +281,7 @@ public:
                 if (Unit* pPassenger = pVehicle->GetPassenger(SEAT_ID_0))
                 {
                     Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                    if (me->GetMap()->IsDungeon() && !players.isEmpty())
+                    if (!players.isEmpty())
                     {
                         for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
                         {
@@ -346,7 +346,6 @@ public:
         uint32 uiBladeStormTimer;
         uint32 uiInterceptTimer;
         uint32 uiMortalStrikeTimer;
-        uint32 uiAttackTimer;
 
         bool bDone;
         bool bHome;
@@ -375,11 +374,11 @@ public:
             {
                 bDone = true;
 
-                if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
+                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 EnterEvadeMode();
@@ -395,13 +394,13 @@ public:
                 }
             }else uiPhaseTimer -= uiDiff;
 
-            if (!UpdateVictim() || me->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
                 return;
 
             if (uiInterceptTimer <= uiDiff)
             {
                 Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                if (me->GetMap()->IsDungeon() && !players.isEmpty())
+                if (!players.isEmpty())
                 {
                     for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
                     {
@@ -514,11 +513,11 @@ public:
             {
                 bDone = true;
 
-                if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
+                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 instance->SetData(BOSS_GRAND_CHAMPIONS, IN_PROGRESS);
@@ -543,7 +542,7 @@ public:
                 uiFireBallTimer = 5000;
             } else uiFireBallTimer -= uiDiff;
 
-            if (!UpdateVictim() || me->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
                 return;
 
             if (uiFireBallTimer <= uiDiff)
@@ -663,11 +662,11 @@ public:
             {
                 bDone = true;
 
-                if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
+                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 instance->SetData(BOSS_GRAND_CHAMPIONS, IN_PROGRESS);
@@ -685,7 +684,7 @@ public:
                 }
             }else uiPhaseTimer -= uiDiff;
 
-            if (!UpdateVictim() || me->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
                 return;
 
             if (uiChainLightningTimer <= uiDiff)
@@ -769,7 +768,7 @@ public:
             uiMultiShotTimer = 0;
             uiLightningArrowsTimer = 7000;
 
-            uiTargetGUID = 0;
+            uiTargetGUID.Clear();
 
             bShoot = false;
         }
@@ -783,7 +782,7 @@ public:
         uint32 uiMultiShotTimer;
         uint32 uiLightningArrowsTimer;
 
-        uint64 uiTargetGUID;
+        ObjectGuid uiTargetGUID;
 
         bool bShoot;
         bool bDone;
@@ -813,11 +812,11 @@ public:
             {
                 bDone = true;
 
-                if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
+                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 instance->SetData(BOSS_GRAND_CHAMPIONS, IN_PROGRESS);
@@ -835,7 +834,7 @@ public:
                 }
             }else uiPhaseTimer -= uiDiff;
 
-            if (!UpdateVictim() || me->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
                 return;
 
             if (uiLightningArrowsTimer <= uiDiff)
@@ -868,7 +867,7 @@ public:
                 else
                 {
                     Map::PlayerList const& players = me->GetMap()->GetPlayers();
-                    if (me->GetMap()->IsDungeon() && !players.isEmpty())
+                    if (!players.isEmpty())
                     {
                         for (Map::PlayerList::const_iterator itr = players.begin(); itr != players.end(); ++itr)
                         {
@@ -965,11 +964,11 @@ public:
             {
                 bDone = true;
 
-                if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_1))
+                if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_1))
                     me->SetHomePosition(739.678f, 662.541f, 412.393f, 4.49f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_2))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_2))
                     me->SetHomePosition(746.71f, 661.02f, 411.69f, 4.6f);
-                else if (me->GetGUID() == instance->GetData64(DATA_GRAND_CHAMPION_3))
+                else if (me->GetGUID() == instance->GetGuidData(DATA_GRAND_CHAMPION_3))
                     me->SetHomePosition(754.34f, 660.70f, 412.39f, 4.79f);
 
                 instance->SetData(BOSS_GRAND_CHAMPIONS, IN_PROGRESS);
@@ -987,7 +986,7 @@ public:
                 }
             } else uiPhaseTimer -= uiDiff;
 
-            if (!UpdateVictim() || me->HasUnitMovementFlag(MOVEMENTFLAG_ONTRANSPORT))
+            if (!UpdateVictim() || !me->m_movementInfo.transport.guid.IsEmpty())
                 return;
 
             if (uiEviscerateTimer <= uiDiff)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -82,12 +82,7 @@ uint32 PrismaticAuras[]=
     40897,                                                  // Holy
 };
 
-struct Locations
-{
-    float x, y, z;
-};
-
-static Locations TeleportPoint[]=
+G3D::Vector3 const TeleportPoint[]=
 {
     {959.996f, 212.576f, 193.843f},
     {932.537f, 231.813f, 193.838f},
@@ -112,8 +107,8 @@ public:
 
         void Initialize()
         {
-            for (uint8 i = 0; i<3; ++i)
-                TargetGUID[i] = 0;
+            for (uint8 i = 0; i < 3; ++i)
+                TargetGUID[i].Clear();
 
             BeamCount = 0;
             CurrentBeam = SINISTER_BEAM;   // 0 - Sinister, 1 - Vile, 2 - Wicked, 3 - Sinful
@@ -232,11 +227,11 @@ public:
                     {
                         for (uint8 i = 0; i < 3; ++i)
                         {
-                            if (TargetGUID[i])
+                            if (!TargetGUID[i].IsEmpty())
                             {
                                 if (Unit* unit = ObjectAccessor::GetUnit(*me, TargetGUID[i]))
                                     unit->CastSpell(unit, SPELL_ATTRACTION, true);
-                                TargetGUID[i] = 0;
+                                TargetGUID[i].Clear();
                             }
                         }
                         ++ExplosionCount;
@@ -267,7 +262,7 @@ public:
         }
 
     private:
-        uint64 TargetGUID[3];
+        ObjectGuid TargetGUID[3];
         uint32 BeamCount;
         uint32 CurrentBeam;
         uint32 ExplosionCount;

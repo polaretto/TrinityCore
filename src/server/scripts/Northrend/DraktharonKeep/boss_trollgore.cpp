@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -135,7 +135,7 @@ class boss_trollgore : public CreatureScript
                             break;
                         case EVENT_SPAWN:
                             for (uint8 i = 0; i < 3; ++i)
-                                if (Creature* trigger = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_TROLLGORE_INVADER_SUMMONER_1 + i)))
+                                if (Creature* trigger = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TROLLGORE_INVADER_SUMMONER_1 + i)))
                                     trigger->CastSpell(trigger, RAND(SPELL_SUMMON_INVADER_A, SPELL_SUMMON_INVADER_B, SPELL_SUMMON_INVADER_C), true, NULL, NULL, me->GetGUID());
 
                             events.ScheduleEvent(EVENT_SPAWN, urand(30000, 40000));
@@ -309,7 +309,7 @@ class spell_trollgore_invader_taunt : public SpellScriptLoader
 
             bool Validate(SpellInfo const* spellInfo) override
             {
-                if (!sSpellMgr->GetSpellInfo(spellInfo->Effects[EFFECT_0].CalcValue()))
+                if (!sSpellMgr->GetSpellInfo(spellInfo->GetEffect(EFFECT_0)->CalcValue()))
                     return false;
                 return true;
             }

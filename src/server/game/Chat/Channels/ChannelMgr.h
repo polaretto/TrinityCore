@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -21,11 +21,7 @@
 #include "Common.h"
 #include "Channel.h"
 
-#include <map>
-#include <string>
-
-#include "World.h"
-
+#define MAX_CHANNEL_NAME_STR 0x31
 #define MAX_CHANNEL_PASS_STR 31
 
 class ChannelMgr
@@ -33,22 +29,22 @@ class ChannelMgr
     typedef std::map<std::wstring, Channel*> ChannelMap;
 
     protected:
-        ChannelMgr() : team(0) { }
+        ChannelMgr() : _team(0) { }
         ~ChannelMgr();
 
     public:
-        static ChannelMgr* forTeam(uint32 team);
-        void setTeam(uint32 newTeam) { team = newTeam; }
+        static ChannelMgr* ForTeam(uint32 team);
+        void SetTeam(uint32 newTeam) { _team = newTeam; }
 
-        Channel* GetJoinChannel(std::string const& name, uint32 channel_id);
-        Channel* GetChannel(std::string const& name, Player* p, bool pkt = true);
+        Channel* GetJoinChannel(std::string const& name, uint32 channelId);
+        Channel* GetChannel(std::string const& name, Player* player, bool notify = true);
         void LeftChannel(std::string const& name);
 
     private:
-        ChannelMap channels;
-        uint32 team;
+        ChannelMap _channels;
+        uint32 _team;
 
-        void MakeNotOnPacket(WorldPacket* data, std::string const& name);
+        static void SendNotOnChannelNotify(Player const* player, std::string const& name);
 };
 
 #endif

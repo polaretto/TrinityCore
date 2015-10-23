@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -62,6 +62,16 @@ public:
     {
         boss_shirrak_the_dead_watcherAI(Creature* creature) : ScriptedAI(creature)
         {
+            Initialize();
+        }
+
+        void Initialize()
+        {
+            Inhibitmagic_Timer = 0;
+            Attractmagic_Timer = 28000;
+            Carnivorousbite_Timer = 10000;
+            FocusFire_Timer = 17000;
+            FocusedTargetGUID.Clear();
         }
 
         uint32 Inhibitmagic_Timer;
@@ -69,15 +79,11 @@ public:
         uint32 Carnivorousbite_Timer;
         uint32 FocusFire_Timer;
 
-        uint64 FocusedTargetGUID;
+        ObjectGuid FocusedTargetGUID;
 
         void Reset() override
         {
-            Inhibitmagic_Timer = 0;
-            Attractmagic_Timer = 28000;
-            Carnivorousbite_Timer = 10000;
-            FocusFire_Timer = 17000;
-            FocusedTargetGUID = 0;
+            Initialize();
         }
 
         void EnterCombat(Unit* /*who*/) override
@@ -103,11 +109,10 @@ public:
             if (Inhibitmagic_Timer <= diff)
             {
                 float dist;
-                Map* map = me->GetMap();
-                Map::PlayerList const &PlayerList = map->GetPlayers();
+                Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
                 for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                     if (Player* i_pl = i->GetSource())
-                        if (i_pl->IsAlive() && (dist = i_pl->IsWithinDist(me, 45)))
+                        if (i_pl->IsAlive() && (dist = i_pl->GetDistance(me)) < 45)
                         {
                             i_pl->RemoveAurasDueToSpell(SPELL_INHIBITMAGIC);
                             me->AddAura(SPELL_INHIBITMAGIC, i_pl);
@@ -174,6 +179,13 @@ public:
     {
         npc_focus_fireAI(Creature* creature) : ScriptedAI(creature)
         {
+            Initialize();
+        }
+
+        void Initialize()
+        {
+            FieryBlast_Timer = 3000 + (rand32() % 1000);
+            fiery1 = fiery2 = true;
         }
 
         uint32 FieryBlast_Timer;
@@ -181,8 +193,7 @@ public:
 
         void Reset() override
         {
-            FieryBlast_Timer = 3000 + (rand32() % 1000);
-            fiery1 = fiery2 = true;
+            Initialize();
         }
 
         void EnterCombat(Unit* /*who*/) override

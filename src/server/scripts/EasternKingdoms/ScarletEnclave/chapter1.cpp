@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -107,7 +107,6 @@ public:
             if (!me->GetCurrentEquipmentId())
                 me->SetCurrentEquipmentId(me->GetOriginalEquipmentId());
 
-            playerGUID = 0;
             wait_timer = 0;
             anchorX = 0.f;
             anchorY = 0.f;
@@ -115,15 +114,15 @@ public:
 
         void Initialize()
         {
-            anchorGUID = 0;
+            anchorGUID.Clear();
             phase = PHASE_CHAINED;
         }
 
-        uint64 playerGUID;
+        ObjectGuid playerGUID;
         UnworthyInitiatePhase phase;
         uint32 wait_timer;
         float anchorX, anchorY;
-        uint64 anchorGUID;
+        ObjectGuid anchorGUID;
 
         EventMap events;
 
@@ -153,6 +152,7 @@ public:
             if (id == 1)
             {
                 wait_timer = 5000;
+                me->LoadEquipment(1);
                 me->CastSpell(me, SPELL_DK_INITIATE_VISUAL, true);
 
                 if (Player* starter = ObjectAccessor::GetPlayer(*me, playerGUID))
@@ -175,7 +175,7 @@ public:
             anchor->GetContactPoint(me, anchorX, anchorY, z, 1.0f);
 
             playerGUID = target->GetGUID();
-            Talk(SAY_EVENT_START);
+            Talk(SAY_EVENT_START, target);
         }
 
         void UpdateAI(uint32 diff) override
@@ -300,17 +300,17 @@ public:
 
     struct npc_unworthy_initiate_anchorAI : public PassiveAI
     {
-        npc_unworthy_initiate_anchorAI(Creature* creature) : PassiveAI(creature), prisonerGUID(0) { }
+        npc_unworthy_initiate_anchorAI(Creature* creature) : PassiveAI(creature) { }
 
-        uint64 prisonerGUID;
+        ObjectGuid prisonerGUID;
 
-        void SetGUID(uint64 guid, int32 /*id*/) override
+        void SetGUID(ObjectGuid guid, int32 /*id*/) override
         {
             if (!prisonerGUID)
                 prisonerGUID = guid;
         }
 
-        uint64 GetGUID(int32 /*id*/) const override
+        ObjectGuid GetGUID(int32 /*id*/) const override
         {
             return prisonerGUID;
         }
@@ -325,9 +325,12 @@ public:
     bool OnGossipHello(Player* player, GameObject* go) override
     {
         if (Creature* anchor = go->FindNearestCreature(29521, 15))
-            if (uint64 prisonerGUID = anchor->AI()->GetGUID())
+        {
+            ObjectGuid prisonerGUID = anchor->AI()->GetGUID();
+            if (!prisonerGUID.IsEmpty())
                 if (Creature* prisoner = ObjectAccessor::GetCreature(*player, prisonerGUID))
                     ENSURE_AI(npc_unworthy_initiate::npc_unworthy_initiateAI, prisoner->AI())->EventStart(anchor, player);
+        }
 
         return false;
     }
@@ -421,7 +424,7 @@ class npc_eye_of_acherus : public CreatureScript
                         for (uint8 i = 0; i < MAX_MOVE_TYPE; ++i)
                             me->SetSpeed(UnitMoveType(i), owner->GetSpeedRate(UnitMoveType(i)), true);
 
-                        TalkToMap(TALK_CONTROL, owner);
+                        Talk(TALK_CONTROL, owner);
                     }
                     me->SetDisableGravity(false);
                     DoCast(me, SPELL_EYE_FLIGHT);
@@ -532,14 +535,14 @@ public:
 
         void Initialize()
         {
-            m_uiDuelerGUID = 0;
+            m_uiDuelerGUID.Clear();
             m_uiDuelTimer = 5000;
             m_bIsDuelInProgress = false;
             lose = false;
         }
 
         bool lose;
-        uint64 m_uiDuelerGUID;
+        ObjectGuid m_uiDuelerGUID;
         uint32 m_uiDuelTimer;
         bool m_bIsDuelInProgress;
 
@@ -655,7 +658,7 @@ class npc_dark_rider_of_acherus : public CreatureScript
                 PhaseTimer = 4000;
                 Phase = 0;
                 Intro = false;
-                TargetGUID = 0;
+                TargetGUID.Clear();
             }
 
             void Reset() override
@@ -716,7 +719,7 @@ class npc_dark_rider_of_acherus : public CreatureScript
             uint32 PhaseTimer;
             uint32 Phase;
             bool Intro;
-            uint64 TargetGUID;
+            ObjectGuid TargetGUID;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -932,20 +935,16 @@ public:
 
         void FindMinions(Unit* owner)
         {
-            std::list<Creature*> MinionList;
+            std::list<TempSummon*> MinionList;
             owner->GetAllMinionsByEntry(MinionList, NPC_GHOULS);
 
             if (!MinionList.empty())
             {
-                for (std::list<Creature*>::const_iterator itr = MinionList.begin(); itr != MinionList.end(); ++itr)
+                for (TempSummon* summon : MinionList)
                 {
-                    if ((*itr)->GetOwner()->GetGUID() == me->GetOwner()->GetGUID())
-                    {
-                        if ((*itr)->IsInCombat() && (*itr)->getAttackerForHelper())
-                        {
-                            AttackStart((*itr)->getAttackerForHelper());
-                        }
-                    }
+                    if (summon->GetOwnerGUID() == me->GetOwnerGUID())
+                        if (summon->IsInCombat() && summon->getAttackerForHelper())
+                            AttackStart(summon->getAttackerForHelper());
                 }
             }
         }
@@ -1010,7 +1009,7 @@ class npc_scarlet_miner_cart : public CreatureScript
 
         struct npc_scarlet_miner_cartAI : public PassiveAI
         {
-            npc_scarlet_miner_cartAI(Creature* creature) : PassiveAI(creature), _minerGUID(0), _playerGUID(0)
+            npc_scarlet_miner_cartAI(Creature* creature) : PassiveAI(creature)
             {
                 me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
                 me->SetDisplayId(me->GetCreatureTemplate()->Modelid1); // Modelid2 is a horse.
@@ -1028,7 +1027,7 @@ class npc_scarlet_miner_cart : public CreatureScript
             void SummonedCreatureDespawn(Creature* summon) override
             {
                 if (summon->GetEntry() == NPC_MINER)
-                    _minerGUID = 0;
+                    _minerGUID.Clear();
             }
 
             void DoAction(int32 /*param*/) override
@@ -1054,15 +1053,15 @@ class npc_scarlet_miner_cart : public CreatureScript
                 }
                 else
                 {
-                    _playerGUID = 0;
+                    _playerGUID.Clear();
                     if (Creature* miner = ObjectAccessor::GetCreature(*me, _minerGUID))
                         miner->DespawnOrUnsummon();
                 }
             }
 
         private:
-            uint64 _minerGUID;
-            uint64 _playerGUID;
+            ObjectGuid _minerGUID;
+            ObjectGuid _playerGUID;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -1096,14 +1095,14 @@ class npc_scarlet_miner : public CreatureScript
 
             void Initialize()
             {
-                carGUID = 0;
+                carGUID.Clear();
                 IntroTimer = 0;
                 IntroPhase = 0;
             }
 
             uint32 IntroTimer;
             uint32 IntroPhase;
-            uint64 carGUID;
+            ObjectGuid carGUID;
 
             void Reset() override
             {
@@ -1148,7 +1147,7 @@ class npc_scarlet_miner : public CreatureScript
                 }
             }
 
-            void SetGUID(uint64 guid, int32 /*id = 0*/) override
+            void SetGUID(ObjectGuid guid, int32 /*id = 0*/) override
             {
                 InitWaypoint();
                 Start(false, false, guid);
@@ -1171,6 +1170,8 @@ class npc_scarlet_miner : public CreatureScript
                         if (Unit* car = ObjectAccessor::GetCreature(*me, carGUID))
                         {
                             me->SetFacingToObject(car);
+                            car->Relocate(car->GetPositionX(), car->GetPositionY(), me->GetPositionZ() + 1);
+                            car->StopMoving();
                             car->RemoveAura(SPELL_CART_DRAG);
                         }
                         Talk(SAY_SCARLET_MINER_1);

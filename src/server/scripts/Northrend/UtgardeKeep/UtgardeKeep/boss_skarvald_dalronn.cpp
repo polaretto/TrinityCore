@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -116,12 +116,12 @@ struct generic_boss_controllerAI : public BossAI
 
     void JustDied(Unit* /*killer*/) override
     {
-        if (Creature* otherBoss = ObjectAccessor::GetCreature(*me, instance->GetData64(OtherBossData)))
+        if (Creature* otherBoss = ObjectAccessor::GetCreature(*me, instance->GetGuidData(OtherBossData)))
         {
             if (otherBoss->IsAlive())
             {
                 Talk(SAY_DIED_FIRST);
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
                 otherBoss->AI()->DoAction(ACTION_OTHER_JUST_DIED);
                 DoCast(me, OtherBossData == DATA_DALRONN ? SPELL_SUMMON_SKARVALD_GHOST : SPELL_SUMMON_DALRONN_GHOST, true);
             }

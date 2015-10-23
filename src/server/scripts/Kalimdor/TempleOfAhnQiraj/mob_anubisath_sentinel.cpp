@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -103,14 +103,16 @@ public:
             gatherOthersWhenAggro = true;
         }
 
-        uint64 NearbyGUID[3];
+        ObjectGuid NearbyGUID[3];
 
         void ClearBuddyList()
         {
-            NearbyGUID[0] = NearbyGUID[1] = NearbyGUID[2] = 0;
+            NearbyGUID[0].Clear();
+            NearbyGUID[1].Clear();
+            NearbyGUID[2].Clear();
         }
 
-        void AddBuddyToList(uint64 CreatureGUID)
+        void AddBuddyToList(ObjectGuid CreatureGUID)
         {
             if (CreatureGUID == me->GetGUID())
                 return;
@@ -130,22 +132,22 @@ public:
         void GiveBuddyMyList(Creature* c)
         {
             aqsentinelAI* cai = ENSURE_AI(aqsentinelAI, (c)->AI());
-            for (int i=0; i<3; ++i)
-                if (NearbyGUID[i] && NearbyGUID[i] != c->GetGUID())
+            for (int32 i = 0; i < 3; ++i)
+                if (!NearbyGUID[i].IsEmpty() && NearbyGUID[i] != c->GetGUID())
                     cai->AddBuddyToList(NearbyGUID[i]);
             cai->AddBuddyToList(me->GetGUID());
         }
 
         void SendMyListToBuddies()
         {
-            for (int i=0; i<3; ++i)
+            for (int32 i = 0; i < 3; ++i)
                 if (Creature* pNearby = ObjectAccessor::GetCreature(*me, NearbyGUID[i]))
                     GiveBuddyMyList(pNearby);
         }
 
         void CallBuddiesToAttack(Unit* who)
         {
-            for (int i=0; i<3; ++i)
+            for (int32 i = 0; i < 3; ++i)
             {
                 Creature* c = ObjectAccessor::GetCreature(*me, NearbyGUID[i]);
                 if (c)
@@ -222,7 +224,7 @@ public:
         {
             if (!me->isDead())
             {
-                for (int i=0; i<3; ++i)
+                for (int i = 0; i < 3; ++i)
                 {
                     if (!NearbyGUID[i])
                         continue;
@@ -252,7 +254,7 @@ public:
 
         void JustDied(Unit* /*killer*/) override
         {
-            for (int ni=0; ni<3; ++ni)
+            for (int ni = 0; ni < 3; ++ni)
             {
                 Creature* sent = ObjectAccessor::GetCreature(*me, NearbyGUID[ni]);
                 if (!sent)

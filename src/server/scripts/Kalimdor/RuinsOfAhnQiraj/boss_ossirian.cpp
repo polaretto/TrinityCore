@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -22,6 +22,7 @@
 #include "SpellInfo.h"
 #include "WorldPacket.h"
 #include "Opcodes.h"
+#include "Packets/MiscPackets.h"
 
 enum Texts
 {
@@ -95,12 +96,12 @@ class boss_ossirian : public CreatureScript
             void Initialize()
             {
                 CrystalIterator = 0;
-                TriggerGUID = 0;
-                CrystalGUID = 0;
+                TriggerGUID.Clear();
+                CrystalGUID.Clear();
             }
 
-            uint64 TriggerGUID;
-            uint64 CrystalGUID;
+            ObjectGuid TriggerGUID;
+            ObjectGuid CrystalGUID;
             uint8 CrystalIterator;
             bool SaidIntro;
 
@@ -143,17 +144,14 @@ class boss_ossirian : public CreatureScript
                 Talk(SAY_AGGRO);
 
                 Map* map = me->GetMap();
-                if (!map->IsDungeon())
-                    return;
 
-                WorldPacket data(SMSG_WEATHER, (4+4+4));
-                data << uint32(WEATHER_STATE_HEAVY_SANDSTORM) << float(1) << uint8(0);
-                map->SendToPlayers(&data);
+                WorldPackets::Misc::Weather weather(WEATHER_STATE_HEAVY_SANDSTORM, 1.0f);
+                map->SendToPlayers(weather.Write());
 
                 for (uint8 i = 0; i < NUM_TORNADOS; ++i)
                 {
                     Position Point = me->GetRandomPoint(RoomCenter, RoomRadius);
-                    if (Creature* Tornado = me->GetMap()->SummonCreature(NPC_SAND_VORTEX, Point))
+                    if (Creature* Tornado = map->SummonCreature(NPC_SAND_VORTEX, Point))
                         Tornado->CastSpell(Tornado, SPELL_SAND_STORM, true);
                 }
 

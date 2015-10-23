@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -19,16 +19,11 @@
 /* ScriptData
 SDName: The_Barrens
 SD%Complete: 90
-SDComment: Quest support: 863, 898, 1719, 2458, 4921, 6981,
+SDComment: Quest support: 863
 SDCategory: Barrens
 EndScriptData */
 
 /* ContentData
-npc_beaten_corpse
-npc_gilthares
-npc_sputtervalve
-npc_taskmaster_fizzule
-npc_twiggy_flathead
 npc_wizzlecrank_shredder
 EndContentData */
 
@@ -333,14 +328,14 @@ public:
             WaveTimer = 600000;
             ChallengerChecker = 0;
             Wave = 0;
-            PlayerGUID = 0;
+            PlayerGUID.Clear();
 
             for (uint8 i = 0; i < 6; ++i)
             {
-                AffrayChallenger[i] = 0;
+                AffrayChallenger[i].Clear();
                 ChallengerDown[i] = false;
             }
-            BigWill = 0;
+            BigWill.Clear();
         }
 
         bool EventInProgress;
@@ -350,9 +345,9 @@ public:
         uint8 Wave;
         uint32 WaveTimer;
         uint32 ChallengerChecker;
-        uint64 PlayerGUID;
-        uint64 AffrayChallenger[6];
-        uint64 BigWill;
+        ObjectGuid PlayerGUID;
+        ObjectGuid AffrayChallenger[6];
+        ObjectGuid BigWill;
 
         void Reset() override
         {
@@ -379,7 +374,7 @@ public:
             {
                 Player* warrior = NULL;
 
-                if (PlayerGUID)
+                if (!PlayerGUID.IsEmpty())
                     warrior = ObjectAccessor::GetPlayer(*me, PlayerGUID);
 
                 if (!warrior)
@@ -392,7 +387,7 @@ public:
 
                     for (uint8 i = 0; i < 6; ++i) // unsummon challengers
                     {
-                        if (AffrayChallenger[i])
+                        if (!AffrayChallenger[i].IsEmpty())
                         {
                             Creature* creature = ObjectAccessor::GetCreature((*me), AffrayChallenger[i]);
                             if (creature && creature->IsAlive())
@@ -400,7 +395,7 @@ public:
                         }
                     }
 
-                    if (BigWill) // unsummon bigWill
+                    if (!BigWill.IsEmpty()) // unsummon bigWill
                     {
                         Creature* creature = ObjectAccessor::GetCreature((*me), BigWill);
                         if (creature && creature->IsAlive())
@@ -441,7 +436,7 @@ public:
                     {
                         for (uint8 i = 0; i < 6; ++i)
                         {
-                            if (AffrayChallenger[i])
+                            if (!AffrayChallenger[i].IsEmpty())
                             {
                                 Creature* creature = ObjectAccessor::GetCreature((*me), AffrayChallenger[i]);
                                 if ((!creature || (!creature->IsAlive())) && !ChallengerDown[i])
@@ -456,7 +451,7 @@ public:
 
                     if (WaveTimer <= diff)
                     {
-                        if (Wave < 6 && AffrayChallenger[Wave] && !EventBigWill)
+                        if (Wave < 6 && !AffrayChallenger[Wave].IsEmpty() && !EventBigWill)
                         {
                             Talk(SAY_TWIGGY_FLATHEAD_FRAY);
                             Creature* creature = ObjectAccessor::GetCreature(*me, AffrayChallenger[Wave]);
@@ -484,7 +479,7 @@ public:
                                 WaveTimer = 1000;
                             }
                         }
-                        else if (Wave >= 6 && EventBigWill && BigWill)
+                        else if (Wave >= 6 && EventBigWill && !BigWill.IsEmpty())
                         {
                             Creature* creature = ObjectAccessor::GetCreature(*me, BigWill);
                             if (!creature || !creature->IsAlive())
@@ -552,7 +547,7 @@ public:
         {
             if (!HasEscortState(STATE_ESCORT_ESCORTING))
             {
-                if (me->getStandState() == UNIT_STAND_STATE_DEAD)
+                if (me->GetStandState() == UNIT_STAND_STATE_DEAD)
                      me->SetStandState(UNIT_STAND_STATE_STAND);
 
                 IsPostEvent = false;
@@ -659,6 +654,7 @@ public:
         if (quest->GetQuestId() == QUEST_ESCAPE)
         {
             creature->setFaction(FACTION_RATCHET);
+            creature->AI()->Talk(SAY_START);
             if (npc_escortAI* pEscortAI = CAST_AI(npc_wizzlecrank_shredder::npc_wizzlecrank_shredderAI, creature->AI()))
                 pEscortAI->Start(true, false, player->GetGUID());
         }
@@ -674,9 +670,5 @@ public:
 
 void AddSC_the_barrens()
 {
-    new npc_beaten_corpse();
-    new npc_gilthares();
-    new npc_taskmaster_fizzule();
-    new npc_twiggy_flathead();
     new npc_wizzlecrank_shredder();
 }

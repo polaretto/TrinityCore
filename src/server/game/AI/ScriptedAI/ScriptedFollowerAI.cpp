@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -23,10 +23,10 @@ SDComment: This AI is under development
 SDCategory: Npc
 EndScriptData */
 
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedFollowerAI.h"
 #include "Group.h"
-#include "Player.h"
 
 const float MAX_PLAYER_DISTANCE = 100.0f;
 
@@ -36,7 +36,6 @@ enum Points
 };
 
 FollowerAI::FollowerAI(Creature* creature) : ScriptedAI(creature),
-    m_uiLeaderGUID(0),
     m_uiUpdateFollowTimer(2500),
     m_uiFollowState(STATE_FOLLOW_NONE),
     m_pQuestForFollow(NULL)
@@ -70,7 +69,7 @@ bool FollowerAI::AssistPlayerInCombat(Unit* who)
         return false;
 
     //experimental (unknown) flag not present
-    if (!(me->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_AID_PLAYERS))
+    if (!(me->GetCreatureTemplate()->type_flags & CREATURE_TYPEFLAGS_CAN_ASSIST))
         return false;
 
     //not a player
@@ -118,7 +117,13 @@ void FollowerAI::MoveInLineOfSight(Unit* who)
             {
                 if (!me->GetVictim())
                 {
-                    who->RemoveAurasByType(SPELL_AURA_MOD_STEALTH);
+                    // Clear distracted state on combat
+                    if (me->HasUnitState(UNIT_STATE_DISTRACTED))
+                    {
+                        me->ClearUnitState(UNIT_STATE_DISTRACTED);
+                        me->GetMotionMaster()->Clear();
+                    }
+
                     AttackStart(who);
                 }
                 else if (me->GetMap()->IsDungeon())
@@ -314,13 +319,13 @@ void FollowerAI::StartFollow(Player* player, uint32 factionForFollower, const Qu
         TC_LOG_DEBUG("scripts", "FollowerAI start with WAYPOINT_MOTION_TYPE, set to MoveIdle.");
     }
 
-    me->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
+    me->SetUInt64Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_NONE);
 
     AddFollowState(STATE_FOLLOW_INPROGRESS);
 
     me->GetMotionMaster()->MoveFollow(player, PET_FOLLOW_DIST, PET_FOLLOW_ANGLE);
 
-    TC_LOG_DEBUG("scripts", "FollowerAI start follow %s (GUID " UI64FMTD ")", player->GetName().c_str(), m_uiLeaderGUID);
+    TC_LOG_DEBUG("scripts", "FollowerAI start follow %s (%s)", player->GetName().c_str(), m_uiLeaderGUID.ToString().c_str());
 }
 
 Player* FollowerAI::GetLeaderForFollower()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -84,13 +84,13 @@ public:
             DoMeleeAttackIfReady();
         }
 
-        void sGossipSelect(Player* player, uint32 sender, uint32 action) override
+       void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
         {
-            if (sender == GOSSIP_ID && action == GOSSIP_OPTION_ID)
+            if (menuId == GOSSIP_ID && gossipListId == GOSSIP_OPTION_ID)
             {
                 player->CLOSE_GOSSIP_MENU();
                 me->setFaction(113);
-                npc_escortAI::Start(true, true, player->GetGUID());
+                Start(true, true, player->GetGUID());
             }
         }
     };
@@ -179,13 +179,21 @@ public:
 
     struct npc_brunnhildar_prisonerAI : public ScriptedAI
     {
-        npc_brunnhildar_prisonerAI(Creature* creature) : ScriptedAI(creature) { }
+        npc_brunnhildar_prisonerAI(Creature* creature) : ScriptedAI(creature)
+        {
+            Initialize();
+        }
+
+        void Initialize()
+        {
+            freed = false;
+        }
 
         bool freed;
 
         void Reset() override
         {
-            freed = false;
+            Initialize();
             me->CastSpell(me, SPELL_ICE_PRISON, true);
         }
 
@@ -372,7 +380,7 @@ class npc_hyldsmeet_protodrake : public CreatureScript
         class npc_hyldsmeet_protodrakeAI : public CreatureAI
         {
             public:
-                npc_hyldsmeet_protodrakeAI(Creature* creature) : CreatureAI(creature), _accessoryRespawnTimer(0), _vehicleKit(creature->GetVehicleKit()) { }
+                npc_hyldsmeet_protodrakeAI(Creature* creature) : CreatureAI(creature), _accessoryRespawnTimer(0) { }
 
                 void PassengerBoarded(Unit* who, int8 /*seat*/, bool apply) override
                 {
@@ -387,6 +395,7 @@ class npc_hyldsmeet_protodrake : public CreatureScript
                 {
                     //! We need to manually reinstall accessories because the vehicle itself is friendly to players,
                     //! so EnterEvadeMode is never triggered. The accessory on the other hand is hostile and killable.
+                    Vehicle* _vehicleKit = me->GetVehicleKit();
                     if (_accessoryRespawnTimer && _accessoryRespawnTimer <= diff && _vehicleKit)
                     {
                         _vehicleKit->InstallAllAccessories(true);
@@ -398,7 +407,6 @@ class npc_hyldsmeet_protodrake : public CreatureScript
 
             private:
                 uint32 _accessoryRespawnTimer;
-                Vehicle* _vehicleKit;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -454,21 +462,20 @@ public:
     {
         npc_brann_bronzebeard_keystoneAI(Creature* creature) : ScriptedAI(creature)
         {
-            memset(&objectGUID, 0, sizeof(objectGUID));
-            playerGUID = 0;
-            voiceGUID = 0;
             objectCounter = 0;
         }
 
         void Reset() override
         {
-            memset(&objectGUID, 0, sizeof(objectGUID));
-            playerGUID = 0;
-            voiceGUID  = 0;
+            for (ObjectGuid& guid : objectGUID)
+                guid.Clear();
+
+            playerGUID.Clear();
+            voiceGUID.Clear();
             objectCounter = 0;
         }
 
-        void sGossipSelect(Player* player, uint32 /*sender*/, uint32 /*action*/) override
+        void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
             player->CLOSE_GOSSIP_MENU();
             playerGUID = player->GetGUID();
@@ -583,9 +590,9 @@ public:
 
     private:
         EventMap events;
-        uint64 playerGUID;
-        uint64 objectGUID[5];
-        uint64 voiceGUID;
+        ObjectGuid playerGUID;
+        ObjectGuid objectGUID[5];
+        ObjectGuid voiceGUID;
         uint8 objectCounter;
     };
 
@@ -643,13 +650,12 @@ public:
     {
         npc_king_jokkum_vehicleAI(Creature* creature) : VehicleAI(creature)
         {
-            playerGUID = 0;
             pathEnd = false;
         }
 
         void Reset() override
         {
-            playerGUID = 0;
+            playerGUID.Clear();
             pathEnd    = false;
         }
 
@@ -715,7 +721,7 @@ public:
 
     private:
         EventMap events;
-        uint64 playerGUID;
+        ObjectGuid playerGUID;
         bool pathEnd;
 
     };
@@ -806,12 +812,13 @@ class spell_close_rift : public SpellScriptLoader
         {
             PrepareAuraScript(spell_close_rift_AuraScript);
 
-            bool Load() override
+        public:
+            spell_close_rift_AuraScript()
             {
                 _counter = 0;
-                return true;
             }
 
+        private:
             bool Validate(SpellInfo const* /*spell*/) override
             {
                 return sSpellMgr->GetSpellInfo(SPELL_DESPAWN_RIFT) != nullptr;

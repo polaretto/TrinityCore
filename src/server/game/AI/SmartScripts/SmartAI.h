@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -154,10 +154,10 @@ class SmartAI : public CreatureAI
         void SetData(uint32 id, uint32 value) override;
 
         // Used in scripts to share variables
-        void SetGUID(uint64 guid, int32 id = 0) override;
+        void SetGUID(ObjectGuid guid, int32 id = 0) override;
 
         // Used in scripts to share variables
-        uint64 GetGUID(int32 id = 0) const override;
+        ObjectGuid GetGUID(int32 id = 0) const override;
 
         //core related
         static int Permissible(const Creature*);
@@ -175,8 +175,8 @@ class SmartAI : public CreatureAI
         void SetInvincibilityHpLevel(uint32 level) { mInvincibilityHpLevel = level; }
 
         void sGossipHello(Player* player) override;
-        void sGossipSelect(Player* player, uint32 sender, uint32 action) override;
-        void sGossipSelectCode(Player* player, uint32 sender, uint32 action, const char* code) override;
+        void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override;
+        void sGossipSelectCode(Player* player, uint32 menuId, uint32 gossipListId, const char* code) override;
         void sQuestAccept(Player* player, Quest const* quest) override;
         //void sQuestSelect(Player* player, Quest const* quest) override;
         void sQuestReward(Player* player, Quest const* quest, uint32 opt) override;
@@ -199,7 +199,7 @@ class SmartAI : public CreatureAI
         uint32 mFollowArrivedTimer;
         uint32 mFollowCredit;
         uint32 mFollowArrivedEntry;
-        uint64 mFollowGuid;
+        ObjectGuid mFollowGuid;
         float mFollowDist;
         float mFollowAngle;
 
@@ -214,7 +214,7 @@ class SmartAI : public CreatureAI
         uint32 mWPPauseTimer;
         WayPoint* mLastWP;
         Position mLastOOCPos;//set on enter combat
-        uint32 GetWPCount() { return mWayPoints ? mWayPoints->size() : 0; }
+        uint32 GetWPCount() const { return mWayPoints ? uint32(mWayPoints->size()) : 0; }
         bool mCanRepeatPath;
         bool mRun;
         bool mCanAutoAttack;

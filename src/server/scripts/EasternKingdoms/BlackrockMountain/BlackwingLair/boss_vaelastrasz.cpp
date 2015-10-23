@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -78,7 +78,7 @@ public:
 
         void Initialize()
         {
-            PlayerGUID = 0;
+            PlayerGUID.Clear();
             HasYelled = false;
         }
 
@@ -151,8 +151,8 @@ public:
                             break;
                         case EVENT_SPEECH_4:
                             me->setFaction(103);
-                            if (PlayerGUID && ObjectAccessor::GetUnit(*me, PlayerGUID))
-                                AttackStart(ObjectAccessor::GetUnit(*me, PlayerGUID));;
+                            if (Player* player = ObjectAccessor::GetPlayer(*me, PlayerGUID))
+                                AttackStart(player);
                             break;
                     }
                 }
@@ -221,9 +221,9 @@ public:
             DoMeleeAttackIfReady();
         }
 
-        void sGossipSelect(Player* player, uint32 sender, uint32 action) override
+        void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
         {
-            if (sender == GOSSIP_ID && action == 0)
+            if (menuId == GOSSIP_ID && gossipListId == 0)
             {
                 player->CLOSE_GOSSIP_MENU();
                 BeginSpeech(player);
@@ -231,7 +231,7 @@ public:
         }
 
         private:
-            uint64 PlayerGUID;
+            ObjectGuid PlayerGUID;
             bool HasYelled;
     };
 

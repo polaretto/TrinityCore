@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -64,7 +64,6 @@ enum Creatures
     NPC_KILREK                  = 17229
 };
 
-
 class npc_kilrek : public CreatureScript
 {
 public:
@@ -101,7 +100,7 @@ public:
 
         void JustDied(Unit* /*killer*/) override
         {
-            Creature* Terestian = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_TERESTIAN));
+            Creature* Terestian = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_TERESTIAN));
             if (Terestian && Terestian->IsAlive())
                 DoCast(Terestian, SPELL_BROKEN_PACT, true);
         }
@@ -144,10 +143,10 @@ public:
 
         void Initialize()
         {
-            SacrificeGUID = 0;
+            SacrificeGUID.Clear();
         }
 
-        uint64 SacrificeGUID;
+        ObjectGuid SacrificeGUID;
 
         void Reset() override
         {
@@ -161,7 +160,7 @@ public:
 
         void JustDied(Unit* /*killer*/) override
         {
-            if (SacrificeGUID)
+            if (!SacrificeGUID.IsEmpty())
             {
                 Unit* Sacrifice = ObjectAccessor::GetUnit(*me, SacrificeGUID);
                 if (Sacrifice)
@@ -269,10 +268,8 @@ public:
     {
         boss_terestianAI(Creature* creature) : ScriptedAI(creature)
         {
-            Initialize();
-            for (uint8 i = 0; i < 2; ++i)
-                PortalGUID[i] = 0;
             instance = creature->GetInstanceScript();
+            Initialize();
         }
 
         void Initialize()
@@ -289,7 +286,7 @@ public:
 
         InstanceScript* instance;
 
-        uint64 PortalGUID[2];
+        ObjectGuid PortalGUID[2];
         uint8 PortalsCount;
 
         uint32 SacrificeTimer;
@@ -304,7 +301,7 @@ public:
         {
             for (uint8 i = 0; i < 2; ++i)
             {
-                if (PortalGUID[i])
+                if (!PortalGUID[i].IsEmpty())
                 {
                     if (Creature* pPortal = ObjectAccessor::GetCreature(*me, PortalGUID[i]))
                     {
@@ -312,7 +309,7 @@ public:
                         pPortal->DespawnOrUnsummon();
                     }
 
-                    PortalGUID[i] = 0;
+                    PortalGUID[i].Clear();
                 }
             }
 
@@ -362,12 +359,12 @@ public:
         {
             for (uint8 i = 0; i < 2; ++i)
             {
-                if (PortalGUID[i])
+                if (!PortalGUID[i].IsEmpty())
                 {
                     if (Creature* pPortal = ObjectAccessor::GetCreature((*me), PortalGUID[i]))
                         pPortal->DespawnOrUnsummon();
 
-                    PortalGUID[i] = 0;
+                    PortalGUID[i].Clear();
                 }
             }
 
@@ -413,7 +410,7 @@ public:
                 if (!PortalGUID[1])
                     DoCastVictim(SPELL_FIENDISH_PORTAL_1, false);
 
-                if (PortalGUID[0] && PortalGUID[1])
+                if (!PortalGUID[0].IsEmpty() && !PortalGUID[1].IsEmpty())
                 {
                     if (Creature* pPortal = ObjectAccessor::GetCreature(*me, PortalGUID[urand(0, 1)]))
                         pPortal->CastSpell(me->GetVictim(), SPELL_SUMMON_FIENDISIMP, false);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -229,7 +229,15 @@ public:
 
     struct npc_engineer_heliceAI : public npc_escortAI
     {
-        npc_engineer_heliceAI(Creature* creature) : npc_escortAI(creature) { }
+        npc_engineer_heliceAI(Creature* creature) : npc_escortAI(creature)
+        {
+            Initialize();
+        }
+
+        void Initialize()
+        {
+            m_uiChatTimer = 4000;
+        }
 
         uint32 m_uiChatTimer;
 
@@ -274,7 +282,7 @@ public:
 
         void Reset() override
         {
-            m_uiChatTimer = 4000;
+            Initialize();
         }
 
         void JustDied(Unit* /*killer*/) override
@@ -366,16 +374,24 @@ public:
 
     struct npc_jungle_punch_targetAI : public ScriptedAI
     {
-        npc_jungle_punch_targetAI(Creature* creature) : ScriptedAI(creature) { }
+        npc_jungle_punch_targetAI(Creature* creature) : ScriptedAI(creature)
+        {
+            Initialize();
+        }
 
-        void Reset() override
+        void Initialize()
         {
             sayTimer = 3500;
             sayStep = 0;
             timer = 0;
             phase = 0;
-            playerGUID = 0;
-            orphanGUID = 0;
+            playerGUID.Clear();
+            orphanGUID.Clear();
+        }
+
+        void Reset() override
+        {
+            Initialize();
         }
 
         void MoveInLineOfSight(Unit* who) override
@@ -477,19 +493,18 @@ public:
             if (!quest)
                 return;
 
-            QuestStatusMap::const_iterator itr = player->getQuestStatusMap().find(QUEST_TASTE_TEST);
-            if (itr->second.Status != QUEST_STATUS_INCOMPLETE)
+            if (player->GetQuestStatus(QUEST_TASTE_TEST) != QUEST_STATUS_INCOMPLETE)
                 return;
 
-            for (uint8 i = 0; i < 3; ++i)
+            for (uint32 i = 0; i < quest->Objectives.size(); ++i)
             {
-                if (uint32(quest->RequiredNpcOrGo[i]) != me->GetEntry())
+                if (uint32(quest->Objectives[i].ObjectID) != me->GetEntry())
                     continue;
 
-                if (itr->second.CreatureOrGOCount[i] != 0)
+                if (player->GetQuestObjectiveData(quest, i) != 0)
                     continue;
 
-                player->KilledMonsterCredit(me->GetEntry(), 0);
+                player->KilledMonsterCredit(me->GetEntry());
                 player->Say(SAY_OFFER, LANG_UNIVERSAL);
                 sayStep = 1;
                 break;
@@ -501,8 +516,8 @@ public:
             uint8 sayStep;
             uint32 timer;
             int8 phase;
-            uint64 playerGUID;
-            uint64 orphanGUID;
+            ObjectGuid playerGUID;
+            ObjectGuid orphanGUID;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
@@ -783,7 +798,7 @@ public:
                     apple->CastSpell(apple, SPELL_APPLE_FALL);
                     wilhelm->AI()->Talk(SAY_WILHELM_HIT);
                     if (Player* player = shooter->ToPlayer())
-                        player->KilledMonsterCredit(NPC_APPLE, 0);
+                        player->KilledMonsterCredit(NPC_APPLE);
                     apple->DespawnOrUnsummon();
 
                     break;

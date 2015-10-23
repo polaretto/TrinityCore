@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -20,6 +20,7 @@
 #define TRINITYCORE_GOSSIP_H
 
 #include "Common.h"
+#include "ObjectGuid.h"
 #include "QuestDef.h"
 #include "NPCHandler.h"
 
@@ -76,6 +77,7 @@ enum GossipOptionIcon
     GOSSIP_ICON_CHAT_18             = 18,                   // white chat bubble
     GOSSIP_ICON_CHAT_19             = 19,                   // white chat bubble
     GOSSIP_ICON_CHAT_20             = 20,                   // white chat bubble
+    GOSSIP_ICON_CHAT_21             = 21,                   // transmogrifier?
     GOSSIP_ICON_MAX
 };
 
@@ -167,22 +169,15 @@ class GossipMenu
 
         void SetMenuId(uint32 menu_id) { _menuId = menu_id; }
         uint32 GetMenuId() const { return _menuId; }
-        void SetSenderGUID(uint64 guid) { _senderGUID = guid; }
-        uint64 GetSenderGUID() const { return _senderGUID; }
+        void SetSenderGUID(ObjectGuid guid) { _senderGUID = guid; }
+        ObjectGuid GetSenderGUID() const { return _senderGUID; }
         void SetLocale(LocaleConstant locale) { _locale = locale; }
         LocaleConstant GetLocale() const { return _locale; }
 
         void AddGossipMenuItemData(uint32 menuItemId, uint32 gossipActionMenuId, uint32 gossipActionPoi);
 
-        uint32 GetMenuItemCount() const
-        {
-            return _menuItems.size();
-        }
-
-        bool Empty() const
-        {
-            return _menuItems.empty();
-        }
+        uint32 GetMenuItemCount() const { return uint32(_menuItems.size()); }
+        bool Empty() const { return _menuItems.empty(); }
 
         GossipMenuItem const* GetItem(uint32 id) const
         {
@@ -217,7 +212,7 @@ class GossipMenu
         GossipMenuItemContainer _menuItems;
         GossipMenuItemDataContainer _menuItemData;
         uint32 _menuId;
-        uint64 _senderGUID;
+        ObjectGuid _senderGUID;
         LocaleConstant _locale;
 };
 
@@ -229,23 +224,10 @@ class QuestMenu
 
         void AddMenuItem(uint32 QuestId, uint8 Icon);
         void ClearMenu();
-
-        uint8 GetMenuItemCount() const
-        {
-            return _questMenuItems.size();
-        }
-
-        bool Empty() const
-        {
-            return _questMenuItems.empty();
-        }
-
+        uint8 GetMenuItemCount() const{ return uint8(_questMenuItems.size()); }
+        bool Empty() const { return _questMenuItems.empty(); }
         bool HasItem(uint32 questId) const;
-
-        QuestMenuItem const& GetItem(uint16 index) const
-        {
-            return _questMenuItems[index];
-        }
+        QuestMenuItem const& GetItem(uint16 index) const { return _questMenuItems[index]; }
 
     private:
         QuestMenuItemList _questMenuItems;
@@ -267,22 +249,22 @@ class PlayerMenu
         uint32 GetGossipOptionAction(uint32 selection) const { return _gossipMenu.GetMenuItemAction(selection); }
         bool IsGossipOptionCoded(uint32 selection) const { return _gossipMenu.IsMenuItemCoded(selection); }
 
-        void SendGossipMenu(uint32 titleTextId, uint64 objectGUID);
+        void SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID);
         void SendCloseGossip();
         void SendPointOfInterest(uint32 poiId) const;
 
         /*********************************************************/
         /***                    QUEST SYSTEM                   ***/
         /*********************************************************/
-        void SendQuestGiverStatus(uint8 questStatus, uint64 npcGUID) const;
+        void SendQuestGiverStatus(uint32 questStatus, ObjectGuid npcGUID) const;
 
-        void SendQuestGiverQuestList(QEmote const& eEmote, const std::string& Title, uint64 npcGUID);
+        void SendQuestGiverQuestList(ObjectGuid npcGUID);
 
         void SendQuestQueryResponse(Quest const* quest) const;
-        void SendQuestGiverQuestDetails(Quest const* quest, uint64 npcGUID, bool activateAccept) const;
+        void SendQuestGiverQuestDetails(Quest const* quest, ObjectGuid npcGUID, bool activateAccept) const;
 
-        void SendQuestGiverOfferReward(Quest const* quest, uint64 npcGUID, bool enableNext) const;
-        void SendQuestGiverRequestItems(Quest const* quest, uint64 npcGUID, bool canComplete, bool closeOnCancel) const;
+        void SendQuestGiverOfferReward(Quest const* quest, ObjectGuid npcGUID, bool enableNext) const;
+        void SendQuestGiverRequestItems(Quest const* quest, ObjectGuid npcGUID, bool canComplete, bool closeOnCancel) const;
 
         static void AddQuestLevelToTitle(std::string &title, int32 level);
 

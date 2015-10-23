@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,15 +44,7 @@ class instance_pit_of_saron : public InstanceMapScript
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
                 LoadDoorData(Doors);
-                _garfrostGUID = 0;
-                _krickGUID = 0;
-                _ickGUID = 0;
-                _tyrannusGUID = 0;
-                _rimefangGUID = 0;
-                _jainaOrSylvanas1GUID = 0;
-                _jainaOrSylvanas2GUID = 0;
                 _teamInInstance = 0;
-                _tyrannusEventGUID = 0;
             }
 
             void OnPlayerEnter(Player* player) override
@@ -239,7 +231,7 @@ class instance_pit_of_saron : public InstanceMapScript
                 return 0;
             }
 
-            uint64 GetData64(uint32 type) const override
+            ObjectGuid GetGuidData(uint32 type) const override
             {
                 switch (type)
                 {
@@ -263,19 +255,19 @@ class instance_pit_of_saron : public InstanceMapScript
                         break;
                 }
 
-                return 0;
+                return ObjectGuid::Empty;
             }
 
         private:
-            uint64 _garfrostGUID;
-            uint64 _krickGUID;
-            uint64 _ickGUID;
-            uint64 _tyrannusGUID;
-            uint64 _rimefangGUID;
+            ObjectGuid _garfrostGUID;
+            ObjectGuid _krickGUID;
+            ObjectGuid _ickGUID;
+            ObjectGuid _tyrannusGUID;
+            ObjectGuid _rimefangGUID;
 
-            uint64 _tyrannusEventGUID;
-            uint64 _jainaOrSylvanas1GUID;
-            uint64 _jainaOrSylvanas2GUID;
+            ObjectGuid _tyrannusEventGUID;
+            ObjectGuid _jainaOrSylvanas1GUID;
+            ObjectGuid _jainaOrSylvanas2GUID;
 
             uint32 _teamInInstance;
         };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -88,22 +88,22 @@ struct npc_escortAI : public ScriptedAI
         virtual void WaypointReached(uint32 pointId) = 0;
         virtual void WaypointStart(uint32 /*pointId*/) { }
 
-        void Start(bool isActiveAttacker = true, bool run = false, uint64 playerGUID = 0, Quest const* quest = NULL, bool instantRespawn = false, bool canLoopPath = false, bool resetWaypoints = true);
+        void Start(bool isActiveAttacker = true, bool run = false, ObjectGuid playerGUID = ObjectGuid::Empty, Quest const* quest = NULL, bool instantRespawn = false, bool canLoopPath = false, bool resetWaypoints = true);
 
         void SetRun(bool on = true);
         void SetEscortPaused(bool on);
 
         bool HasEscortState(uint32 escortState) { return (m_uiEscortState & escortState) != 0; }
-        virtual bool IsEscorted() override { return (m_uiEscortState & STATE_ESCORT_ESCORTING); }
+        virtual bool IsEscorted() const override { return (m_uiEscortState & STATE_ESCORT_ESCORTING); }
 
         void SetMaxPlayerDistance(float newMax) { MaxPlayerDistance = newMax; }
-        float GetMaxPlayerDistance() { return MaxPlayerDistance; }
+        float GetMaxPlayerDistance() const { return MaxPlayerDistance; }
 
         void SetDespawnAtEnd(bool despawn) { DespawnAtEnd = despawn; }
         void SetDespawnAtFar(bool despawn) { DespawnAtFar = despawn; }
-        bool GetAttack() { return m_bIsActiveAttacker; }//used in EnterEvadeMode override
+        bool GetAttack() const { return m_bIsActiveAttacker; }//used in EnterEvadeMode override
         void SetCanAttack(bool attack) { m_bIsActiveAttacker = attack; }
-        uint64 GetEventStarterGUID() { return m_uiPlayerGUID; }
+        ObjectGuid GetEventStarterGUID() const { return m_uiPlayerGUID; }
 
     protected:
         Player* GetPlayerForEscort() { return ObjectAccessor::GetPlayer(*me, m_uiPlayerGUID); }
@@ -116,7 +116,7 @@ struct npc_escortAI : public ScriptedAI
         void AddEscortState(uint32 escortState) { m_uiEscortState |= escortState; }
         void RemoveEscortState(uint32 escortState) { m_uiEscortState &= ~escortState; }
 
-        uint64 m_uiPlayerGUID;
+        ObjectGuid m_uiPlayerGUID;
         uint32 m_uiWPWaitTimer;
         uint32 m_uiPlayerCheckTimer;
         uint32 m_uiEscortState;

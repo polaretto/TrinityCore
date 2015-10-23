@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -89,6 +89,7 @@ public:
                     case EVENT_BLAST_WAVE:
                         DoCast(me, SPELL_BLAST_WAVE);
                         events.ScheduleEvent(EVENT_BLAST_WAVE, 12000);
+                        break;
                     case EVENT_FRENZY:
                         DoCast(me, SPELL_FRENZY);
                         Talk(EMOTE_FRENZY);

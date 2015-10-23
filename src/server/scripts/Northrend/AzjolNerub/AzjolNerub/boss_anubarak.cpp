@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -96,7 +96,6 @@ public:
             VenomancerTimer = 0;
             DatterTimer = 0;
             DelayTimer = 0;
-            ImpaleTarget = 0;
         }
 
         void Initialize()
@@ -110,6 +109,7 @@ public:
             UndergroundPhase = 0;
             Channeling = false;
             ImpalePhase = IMPALE_PHASE_TARGET;
+            ImpaleTarget.Clear();
         }
 
         InstanceScript* instance;
@@ -130,7 +130,7 @@ public:
 
         uint32 ImpaleTimer;
         uint32 ImpalePhase;
-        uint64 ImpaleTarget;
+        ObjectGuid ImpaleTarget;
 
         SummonList Summons;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -77,15 +77,32 @@ class boss_alar : public CreatureScript
     public:
         boss_alar() : CreatureScript("boss_alar") { }
 
-        struct boss_alarAI : public ScriptedAI
+        struct boss_alarAI : public BossAI
         {
-            boss_alarAI(Creature* creature) : ScriptedAI(creature)
+            boss_alarAI(Creature* creature) : BossAI(creature, DATA_ALAR)
             {
-                instance = creature->GetInstanceScript();
+                Initialize();
                 DefaultMoveSpeedRate = creature->GetSpeedRate(MOVE_RUN);
+                DiveBomb_Timer = 0;
+                MeltArmor_Timer = 0;
+                Charge_Timer = 0;
+                FlamePatch_Timer = 0;
             }
 
-            InstanceScript* instance;
+            void Initialize()
+            {
+                Berserk_Timer = 1200000;
+                Platforms_Move_Timer = 0;
+
+                Phase1 = true;
+                WaitEvent = WE_NONE;
+                WaitTimer = 0;
+                AfterMoving = false;
+                ForceMove = false;
+                ForceTimer = 5000;
+
+                cur_wp = 4;
+            }
 
             WaitEventType WaitEvent;
             uint32 WaitTimer;
@@ -109,19 +126,8 @@ class boss_alar : public CreatureScript
 
             void Reset() override
             {
-                instance->SetData(DATA_ALAREVENT, NOT_STARTED);
-
-                Berserk_Timer = 1200000;
-                Platforms_Move_Timer = 0;
-
-                Phase1 = true;
-                WaitEvent = WE_NONE;
-                WaitTimer = 0;
-                AfterMoving = false;
-                ForceMove = false;
-                ForceTimer = 5000;
-
-                cur_wp = 4;
+                Initialize();
+                _Reset();
 
                 me->SetDisplayId(me->GetNativeDisplayId());
                 me->SetSpeed(MOVE_RUN, DefaultMoveSpeedRate);
@@ -135,16 +141,9 @@ class boss_alar : public CreatureScript
 
             void EnterCombat(Unit* /*who*/) override
             {
-                instance->SetData(DATA_ALAREVENT, IN_PROGRESS);
-
+                _EnterCombat();
                 me->SetDisableGravity(true); // after enterevademode will be set walk movement
-                DoZoneInCombat();
                 me->setActive(true);
-            }
-
-            void JustDied(Unit* /*killer*/) override
-            {
-                instance->SetData(DATA_ALAREVENT, DONE);
             }
 
             void JustSummoned(Creature* summon) override
@@ -178,7 +177,7 @@ class boss_alar : public CreatureScript
                         me->RemoveAllAuras();
                         me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                         me->AttackStop();
-                        me->SetTarget(0);
+                        me->SetTarget(ObjectGuid::Empty);
                         me->SetSpeed(MOVE_RUN, 5.0f);
                         me->GetMotionMaster()->Clear();
                         me->GetMotionMaster()->MovePoint(0, waypoint[5][0], waypoint[5][1], waypoint[5][2]);
@@ -461,9 +460,15 @@ class npc_ember_of_alar : public CreatureScript
         {
             npc_ember_of_alarAI(Creature* creature) : ScriptedAI(creature)
             {
+                Initialize();
                 instance = creature->GetInstanceScript();
                 creature->SetDisableGravity(true);
                 creature->ApplySpellImmune(0, IMMUNITY_SCHOOL, SPELL_SCHOOL_MASK_FIRE, true);
+            }
+
+            void Initialize()
+            {
+                toDie = false;
             }
 
             InstanceScript* instance;
@@ -471,7 +476,7 @@ class npc_ember_of_alar : public CreatureScript
 
             void Reset() override
             {
-                toDie = false;
+                Initialize();
             }
 
             void EnterCombat(Unit* /*who*/) override
@@ -492,9 +497,9 @@ class npc_ember_of_alar : public CreatureScript
                     DoCast(me, SPELL_EMBER_BLAST, true);
                     me->SetDisplayId(11686);
                     me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
-                    if (instance->GetData(DATA_ALAREVENT) == 2)
+                    if (instance->GetBossState(DATA_ALAR) == IN_PROGRESS)
                     {
-                        if (Unit* Alar = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_ALAR)))
+                        if (Unit* Alar = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_ALAR)))
                         {
                             int32 AlarHealth = int32(Alar->GetHealth()) - int32(Alar->CountPctFromMaxHealth(3));
                             if (AlarHealth > 0)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -105,7 +105,7 @@ public:
         {
             if (waypointId == 7 && instance)
             {
-                Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                 if (target && target->IsAlive())
                     me->AddThreat(target, 0.0f);
             }
@@ -201,13 +201,13 @@ public:
             WarstompTimer = 10000;
             CheckTimer = 5000;
             instance = creature->GetInstanceScript();
-            AzgalorGUID = instance->GetData64(DATA_AZGALOR);
+            AzgalorGUID = instance->GetGuidData(DATA_AZGALOR);
         }
 
         uint32 CrippleTimer;
         uint32 WarstompTimer;
         uint32 CheckTimer;
-        uint64 AzgalorGUID;
+        ObjectGuid AzgalorGUID;
         InstanceScript* instance;
 
         void Reset() override
@@ -245,7 +245,7 @@ public:
         {
             if (CheckTimer <= diff)
             {
-                if (AzgalorGUID)
+                if (!AzgalorGUID.IsEmpty())
                 {
                     Creature* boss = ObjectAccessor::GetCreature(*me, AzgalorGUID);
                     if (!boss || (boss && boss->isDead()))

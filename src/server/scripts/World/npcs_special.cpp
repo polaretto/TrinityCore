@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -56,6 +56,7 @@ EndContentData */
 #include "SpellAuras.h"
 #include "Pet.h"
 #include "CreatureTextMgr.h"
+#include "SpellHistory.h"
 
 /*########
 # npc_air_force_bots
@@ -124,7 +125,7 @@ public:
         npc_air_force_botsAI(Creature* creature) : ScriptedAI(creature)
         {
             SpawnAssoc = NULL;
-            SpawnedGUID = 0;
+            SpawnedGUID.Clear();
 
             // find the correct spawnhandling
             static uint32 entryCount = sizeof(spawnAssociations) / sizeof(SpawnAssociation);
@@ -154,7 +155,7 @@ public:
         }
 
         SpawnAssociation* SpawnAssoc;
-        uint64 SpawnedGUID;
+        ObjectGuid SpawnedGUID;
 
         void Reset() override { }
 
@@ -196,11 +197,11 @@ public:
                 if (!playerTarget)
                     return;
 
-                Creature* lastSpawnedGuard = SpawnedGUID == 0 ? NULL : GetSummonedGuard();
+                Creature* lastSpawnedGuard = SpawnedGUID.IsEmpty() ? NULL : GetSummonedGuard();
 
                 // prevent calling Unit::GetUnit at next MoveInLineOfSight call - speedup
                 if (!lastSpawnedGuard)
-                    SpawnedGUID = 0;
+                    SpawnedGUID.Clear();
 
                 switch (SpawnAssoc->spawnType)
                 {
@@ -455,9 +456,6 @@ public:
             me->Relocate(x, y, z + 0.94f);
             me->SetDisableGravity(true);
             me->HandleEmoteCommand(EMOTE_ONESHOT_DANCE);
-            WorldPacket data;                       //send update position to client
-            me->BuildHeartBeatMsg(&data);
-            me->SendMessageToSet(&data, true);
         }
 
         void UpdateAI(uint32 diff) override
@@ -484,9 +482,6 @@ public:
                 me->SetInFront(player);
                 Active = false;
 
-                WorldPacket data;
-                me->BuildHeartBeatMsg(&data);
-                me->SendMessageToSet(&data, true);
                 switch (emote)
                 {
                     case TEXT_EMOTE_KISS:
@@ -530,12 +525,7 @@ enum Doctor
     HORDE_COORDS        = 6
 };
 
-struct Location
-{
-    float x, y, z, o;
-};
-
-static Location AllianceCoords[]=
+Position const AllianceCoords[]=
 {
     {-3757.38f, -4533.05f, 14.16f, 3.62f},                      // Top-far-right bunk as seen from entrance
     {-3754.36f, -4539.13f, 14.16f, 5.13f},                      // Top-far-left bunk
@@ -551,7 +541,7 @@ static Location AllianceCoords[]=
 #define A_RUNTOY -4531.52f
 #define A_RUNTOZ 11.91f
 
-static Location HordeCoords[]=
+Position const HordeCoords[]=
 {
     {-1013.75f, -3492.59f, 62.62f, 4.34f},                      // Left, Behind
     {-1017.72f, -3490.92f, 62.62f, 4.34f},                      // Right, Behind
@@ -597,7 +587,7 @@ public:
 
         void Initialize()
         {
-            PlayerGUID = 0;
+            PlayerGUID.Clear();
 
             SummonPatientTimer = 10000;
             SummonPatientCount = 0;
@@ -610,7 +600,7 @@ public:
             Event = false;
         }
 
-        uint64 PlayerGUID;
+        ObjectGuid PlayerGUID;
 
         uint32 SummonPatientTimer;
         uint32 SummonPatientCount;
@@ -619,8 +609,8 @@ public:
 
         bool Event;
 
-        std::list<uint64> Patients;
-        std::vector<Location*> Coordinates;
+        GuidList Patients;
+        std::vector<Position const*> Coordinates;
 
         void Reset() override
         {
@@ -653,7 +643,7 @@ public:
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
         }
 
-        void PatientDied(Location* point)
+        void PatientDied(Position const* point)
         {
             Player* player = ObjectAccessor::GetPlayer(*me, PlayerGUID);
             if (player && ((player->GetQuestStatus(6624) == QUEST_STATUS_INCOMPLETE) || (player->GetQuestStatus(6622) == QUEST_STATUS_INCOMPLETE)))
@@ -678,7 +668,7 @@ public:
                 Reset();
         }
 
-        void PatientSaved(Creature* /*soldier*/, Player* player, Location* point)
+        void PatientSaved(Creature* /*soldier*/, Player* player, Position const* point)
         {
             if (player && PlayerGUID == player->GetGUID())
             {
@@ -690,10 +680,9 @@ public:
                     {
                         if (!Patients.empty())
                         {
-                            std::list<uint64>::const_iterator itr;
-                            for (itr = Patients.begin(); itr != Patients.end(); ++itr)
+                            for (GuidList::const_iterator itr = Patients.begin(); itr != Patients.end(); ++itr)
                             {
-                                if (Creature* patient = ObjectAccessor::GetCreature((*me), *itr))
+                                if (Creature* patient = ObjectAccessor::GetCreature(*me, *itr))
                                     patient->setDeathState(JUST_DIED);
                             }
                         }
@@ -749,12 +738,12 @@ public:
 
         void Initialize()
         {
-            DoctorGUID = 0;
+            DoctorGUID.Clear();
             Coord = NULL;
         }
 
-        uint64 DoctorGUID;
-        Location* Coord;
+        ObjectGuid DoctorGUID;
+        Position const* Coord;
 
         void Reset() override
         {
@@ -797,7 +786,7 @@ public:
                 return;
 
             if (player->GetQuestStatus(6624) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(6622) == QUEST_STATUS_INCOMPLETE)
-                if (DoctorGUID)
+                if (!DoctorGUID.IsEmpty())
                     if (Creature* doctor = ObjectAccessor::GetCreature(*me, DoctorGUID))
                         ENSURE_AI(npc_doctor::npc_doctorAI, doctor->AI())->PatientSaved(me, player, Coord);
 
@@ -841,9 +830,9 @@ public:
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
                 me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 me->setDeathState(JUST_DIED);
-                me->SetFlag(UNIT_DYNAMIC_FLAGS, 32);
+                me->SetFlag(OBJECT_DYNAMIC_FLAGS, 32);
 
-                if (DoctorGUID)
+                if (!DoctorGUID.IsEmpty())
                     if (Creature* doctor = ObjectAccessor::GetCreature((*me), DoctorGUID))
                         ENSURE_AI(npc_doctor::npc_doctorAI, doctor->AI())->PatientDied(Coord);
             }
@@ -871,7 +860,6 @@ void npc_doctor::npc_doctorAI::UpdateAI(uint32 diff)
             if (Coordinates.empty())
                 return;
 
-            std::vector<Location*>::iterator itr = Coordinates.begin() + rand32() % Coordinates.size();
             uint32 patientEntry = 0;
 
             switch (me->GetEntry())
@@ -887,20 +875,21 @@ void npc_doctor::npc_doctorAI::UpdateAI(uint32 diff)
                     return;
             }
 
-            if (Location* point = *itr)
+            std::vector<Position const*>::iterator point = Coordinates.begin();
+            std::advance(point, urand(0, Coordinates.size() - 1));
+
+            if (Creature* Patient = me->SummonCreature(patientEntry, **point, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000))
             {
-                if (Creature* Patient = me->SummonCreature(patientEntry, point->x, point->y, point->z, point->o, TEMPSUMMON_TIMED_DESPAWN_OUT_OF_COMBAT, 5000))
-                {
-                    //303, this flag appear to be required for client side item->spell to work (TARGET_SINGLE_FRIEND)
-                    Patient->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
+                //303, this flag appear to be required for client side item->spell to work (TARGET_SINGLE_FRIEND)
+                Patient->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);
 
-                    Patients.push_back(Patient->GetGUID());
-                    ENSURE_AI(npc_injured_patient::npc_injured_patientAI, Patient->AI())->DoctorGUID = me->GetGUID();
-                    ENSURE_AI(npc_injured_patient::npc_injured_patientAI, Patient->AI())->Coord = point;
+                Patients.push_back(Patient->GetGUID());
+                ENSURE_AI(npc_injured_patient::npc_injured_patientAI, Patient->AI())->DoctorGUID = me->GetGUID();
+                ENSURE_AI(npc_injured_patient::npc_injured_patientAI, Patient->AI())->Coord = *point;
 
-                    Coordinates.erase(itr);
-                }
+                Coordinates.erase(point);
             }
+
             SummonPatientTimer = 10000;
             ++SummonPatientCount;
         }
@@ -947,19 +936,42 @@ public:
     {
         npc_garments_of_questsAI(Creature* creature) : npc_escortAI(creature)
         {
+            switch (me->GetEntry())
+            {
+                case ENTRY_SHAYA:
+                    quest = QUEST_MOON;
+                    break;
+                case ENTRY_ROBERTS:
+                    quest = QUEST_LIGHT_1;
+                    break;
+                case ENTRY_DOLF:
+                    quest = QUEST_LIGHT_2;
+                    break;
+                case ENTRY_KORJA:
+                    quest = QUEST_SPIRIT;
+                    break;
+                case ENTRY_DG_KEL:
+                    quest = QUEST_DARKNESS;
+                    break;
+                default:
+                    quest = 0;
+                    break;
+            }
+
             Reset();
         }
 
-        uint64 CasterGUID;
+        ObjectGuid CasterGUID;
 
         bool IsHealed;
         bool CanRun;
 
         uint32 RunAwayTimer;
+        uint32 quest;
 
         void Reset() override
         {
-            CasterGUID = 0;
+            CasterGUID.Clear();
 
             IsHealed = false;
             CanRun = false;
@@ -987,93 +999,20 @@ public:
 
                 if (Player* player = caster->ToPlayer())
                 {
-                    switch (me->GetEntry())
+                    if (quest && player->GetQuestStatus(quest) == QUEST_STATUS_INCOMPLETE)
                     {
-                        case ENTRY_SHAYA:
-                            if (player->GetQuestStatus(QUEST_MOON) == QUEST_STATUS_INCOMPLETE)
-                            {
-                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
-                                {
-                                    Talk(SAY_THANKS, caster);
-                                    CanRun = true;
-                                }
-                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
-                                {
-                                    CasterGUID = caster->GetGUID();
-                                    me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    Talk(SAY_HEALED, caster);
-                                    IsHealed = true;
-                                }
-                            }
-                            break;
-                        case ENTRY_ROBERTS:
-                            if (player->GetQuestStatus(QUEST_LIGHT_1) == QUEST_STATUS_INCOMPLETE)
-                            {
-                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
-                                {
-                                    Talk(SAY_THANKS, caster);
-                                    CanRun = true;
-                                }
-                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
-                                {
-                                    CasterGUID = caster->GetGUID();
-                                    me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    Talk(SAY_HEALED, caster);
-                                    IsHealed = true;
-                                }
-                            }
-                            break;
-                        case ENTRY_DOLF:
-                            if (player->GetQuestStatus(QUEST_LIGHT_2) == QUEST_STATUS_INCOMPLETE)
-                            {
-                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
-                                {
-                                    Talk(SAY_THANKS, caster);
-                                    CanRun = true;
-                                }
-                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
-                                {
-                                    CasterGUID = caster->GetGUID();
-                                    me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    Talk(SAY_HEALED, caster);
-                                    IsHealed = true;
-                                }
-                            }
-                            break;
-                        case ENTRY_KORJA:
-                            if (player->GetQuestStatus(QUEST_SPIRIT) == QUEST_STATUS_INCOMPLETE)
-                            {
-                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
-                                {
-                                    Talk(SAY_THANKS, caster);
-                                    CanRun = true;
-                                }
-                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
-                                {
-                                    CasterGUID = caster->GetGUID();
-                                    me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    Talk(SAY_HEALED, caster);
-                                    IsHealed = true;
-                                }
-                            }
-                            break;
-                        case ENTRY_DG_KEL:
-                            if (player->GetQuestStatus(QUEST_DARKNESS) == QUEST_STATUS_INCOMPLETE)
-                            {
-                                if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
-                                {
-                                    Talk(SAY_THANKS, caster);
-                                    CanRun = true;
-                                }
-                                else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
-                                {
-                                    CasterGUID = caster->GetGUID();
-                                    me->SetStandState(UNIT_STAND_STATE_STAND);
-                                    Talk(SAY_HEALED, caster);
-                                    IsHealed = true;
-                                }
-                            }
-                            break;
+                        if (IsHealed && !CanRun && spell->Id == SPELL_FORTITUDE_R1)
+                        {
+                            Talk(SAY_THANKS, caster);
+                            CanRun = true;
+                        }
+                        else if (!IsHealed && spell->Id == SPELL_LESSER_HEAL_R2)
+                        {
+                            CasterGUID = caster->GetGUID();
+                            me->SetStandState(UNIT_STAND_STATE_STAND);
+                            Talk(SAY_HEALED, caster);
+                            IsHealed = true;
+                        }
                     }
 
                     // give quest credit, not expect any special quest objectives
@@ -1107,7 +1046,7 @@ public:
                                 break;
                         }
 
-                        Start(false, true, true);
+                        Start(false, true);
                     }
                     else
                         EnterEvadeMode();                       //something went wrong
@@ -1220,14 +1159,14 @@ public:
         if (creature->IsQuestGiver())
             player->PrepareQuestMenu(creature->GetGUID());
 
-        if (player->HasSpellCooldown(SPELL_INT) ||
-            player->HasSpellCooldown(SPELL_ARM) ||
-            player->HasSpellCooldown(SPELL_DMG) ||
-            player->HasSpellCooldown(SPELL_RES) ||
-            player->HasSpellCooldown(SPELL_STR) ||
-            player->HasSpellCooldown(SPELL_AGI) ||
-            player->HasSpellCooldown(SPELL_STM) ||
-            player->HasSpellCooldown(SPELL_SPI))
+        if (player->GetSpellHistory()->HasCooldown(SPELL_INT) ||
+            player->GetSpellHistory()->HasCooldown(SPELL_ARM) ||
+            player->GetSpellHistory()->HasCooldown(SPELL_DMG) ||
+            player->GetSpellHistory()->HasCooldown(SPELL_RES) ||
+            player->GetSpellHistory()->HasCooldown(SPELL_STR) ||
+            player->GetSpellHistory()->HasCooldown(SPELL_AGI) ||
+            player->GetSpellHistory()->HasCooldown(SPELL_STM) ||
+            player->GetSpellHistory()->HasCooldown(SPELL_SPI))
             player->SEND_GOSSIP_MENU(7393, creature->GetGUID());
         else
         {
@@ -1294,42 +1233,42 @@ public:
                 break;
             case GOSSIP_SENDER_MAIN + 1:
                 creature->CastSpell(player, SPELL_DMG, false);
-                player->AddSpellCooldown(SPELL_DMG, 0, time(NULL) + 7200);
+                player->GetSpellHistory()->AddCooldown(SPELL_DMG, 0, std::chrono::hours(2));
                 SendAction(player, creature, action);
                 break;
             case GOSSIP_SENDER_MAIN + 2:
                 creature->CastSpell(player, SPELL_RES, false);
-                player->AddSpellCooldown(SPELL_RES, 0, time(NULL) + 7200);
+                player->GetSpellHistory()->AddCooldown(SPELL_RES, 0, std::chrono::hours(2));
                 SendAction(player, creature, action);
                 break;
             case GOSSIP_SENDER_MAIN + 3:
                 creature->CastSpell(player, SPELL_ARM, false);
-                player->AddSpellCooldown(SPELL_ARM, 0, time(NULL) + 7200);
+                player->GetSpellHistory()->AddCooldown(SPELL_ARM, 0, std::chrono::hours(2));
                 SendAction(player, creature, action);
                 break;
             case GOSSIP_SENDER_MAIN + 4:
                 creature->CastSpell(player, SPELL_SPI, false);
-                player->AddSpellCooldown(SPELL_SPI, 0, time(NULL) + 7200);
+                player->GetSpellHistory()->AddCooldown(SPELL_SPI, 0, std::chrono::hours(2));
                 SendAction(player, creature, action);
                 break;
             case GOSSIP_SENDER_MAIN + 5:
                 creature->CastSpell(player, SPELL_INT, false);
-                player->AddSpellCooldown(SPELL_INT, 0, time(NULL) + 7200);
+                player->GetSpellHistory()->AddCooldown(SPELL_INT, 0, std::chrono::hours(2));
                 SendAction(player, creature, action);
                 break;
             case GOSSIP_SENDER_MAIN + 6:
                 creature->CastSpell(player, SPELL_STM, false);
-                player->AddSpellCooldown(SPELL_STM, 0, time(NULL) + 7200);
+                player->GetSpellHistory()->AddCooldown(SPELL_STM, 0, std::chrono::hours(2));
                 SendAction(player, creature, action);
                 break;
             case GOSSIP_SENDER_MAIN + 7:
                 creature->CastSpell(player, SPELL_STR, false);
-                player->AddSpellCooldown(SPELL_STR, 0, time(NULL) + 7200);
+                player->GetSpellHistory()->AddCooldown(SPELL_STR, 0, std::chrono::hours(2));
                 SendAction(player, creature, action);
                 break;
             case GOSSIP_SENDER_MAIN + 8:
                 creature->CastSpell(player, SPELL_AGI, false);
-                player->AddSpellCooldown(SPELL_AGI, 0, time(NULL) + 7200);
+                player->GetSpellHistory()->AddCooldown(SPELL_AGI, 0, std::chrono::hours(2));
                 SendAction(player, creature, action);
                 break;
         }
@@ -1479,7 +1418,7 @@ public:
         }
 
         EventMap _events;
-        std::unordered_map<uint64, time_t> _damageTimes;
+        std::unordered_map<ObjectGuid, time_t> _damageTimes;
 
         void Reset() override
         {
@@ -1526,7 +1465,7 @@ public:
                     case EVENT_TD_CHECK_COMBAT:
                     {
                         time_t now = time(NULL);
-                        for (std::unordered_map<uint64, time_t>::iterator itr = _damageTimes.begin(); itr != _damageTimes.end();)
+                        for (std::unordered_map<ObjectGuid, time_t>::iterator itr = _damageTimes.begin(); itr != _damageTimes.end();)
                         {
                             // If unit has not dealt damage to training dummy for 5 seconds, remove him from combat
                             if (itr->second < now - 5)
@@ -1931,11 +1870,11 @@ public:
         }
         if (doSwitch)
         {
-            if (!player->HasEnoughMoney(EXP_COST))
+            if (!player->HasEnoughMoney(uint64(EXP_COST)))
                 player->SendBuyError(BUY_ERR_NOT_ENOUGHT_MONEY, 0, 0, 0);
             else if (noXPGain)
             {
-                player->ModifyMoney(-EXP_COST);
+                player->ModifyMoney(-int64(EXP_COST));
                 player->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_NO_XP_GAIN);
             }
             else if (!noXPGain)
@@ -2171,8 +2110,8 @@ public:
 
             const SpellInfo* spellInfo = sSpellMgr->GetSpellInfo(spellId);
 
-            if (spellInfo && spellInfo->Effects[0].Effect == SPELL_EFFECT_SUMMON_OBJECT_WILD)
-                return spellInfo->Effects[0].MiscValue;
+            if (spellInfo && spellInfo->GetEffect(EFFECT_0)->Effect == SPELL_EFFECT_SUMMON_OBJECT_WILD)
+                return spellInfo->GetEffect(EFFECT_0)->MiscValue;
 
             return 0;
         }
@@ -2262,7 +2201,7 @@ public:
         void Initialize()
         {
             inLove = false;
-            rabbitGUID = 0;
+            rabbitGUID.Clear();
             jumpTimer = urand(5000, 10000);
             bunnyTimer = urand(10000, 20000);
             searchTimer = urand(5000, 10000);
@@ -2272,7 +2211,7 @@ public:
         uint32 jumpTimer;
         uint32 bunnyTimer;
         uint32 searchTimer;
-        uint64 rabbitGUID;
+        ObjectGuid rabbitGUID;
 
         void Reset() override
         {
@@ -2347,7 +2286,7 @@ public:
     {
         npc_imp_in_a_ballAI(Creature* creature) : ScriptedAI(creature)
         {
-            summonerGUID = 0;
+            summonerGUID.Clear();
         }
 
         void IsSummonedBy(Unit* summoner) override
@@ -2375,7 +2314,7 @@ public:
 
     private:
         EventMap events;
-        uint64 summonerGUID;
+        ObjectGuid summonerGUID;
     };
 
     CreatureAI* GetAI(Creature* creature) const override

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -176,14 +176,12 @@ class boss_gothik : public CreatureScript
             }
 
             uint32 waveCount;
-            typedef std::vector<Creature*> TriggerVct;
-            TriggerVct liveTrigger, deadTrigger;
             bool mergedSides;
             bool phaseTwo;
             bool thirtyPercentReached;
 
-            std::vector<uint64> LiveTriggerGUID;
-            std::vector<uint64> DeadTriggerGUID;
+            GuidVector LiveTriggerGUID;
+            GuidVector DeadTriggerGUID;
 
             void Reset() override
             {
@@ -259,7 +257,7 @@ class boss_gothik : public CreatureScript
 
             void DoGothikSummon(uint32 entry)
             {
-                if (GetDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL)
+                if (GetDifficulty() == DIFFICULTY_25_N)
                 {
                     switch (entry)
                     {
@@ -319,37 +317,30 @@ class boss_gothik : public CreatureScript
 
             bool CheckGroupSplitted()
             {
-                Map* map = me->GetMap();
-                if (map && map->IsDungeon())
+                bool checklife = false;
+                bool checkdead = false;
+                Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
+                for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                 {
-                    Map::PlayerList const &PlayerList = map->GetPlayers();
-                    if (!PlayerList.isEmpty())
+                    if (i->GetSource() && i->GetSource()->IsAlive() &&
+                        i->GetSource()->GetPositionX() <= POS_X_NORTH &&
+                        i->GetSource()->GetPositionX() >= POS_X_SOUTH &&
+                        i->GetSource()->GetPositionY() <= POS_Y_GATE &&
+                        i->GetSource()->GetPositionY() >= POS_Y_EAST)
                     {
-                        bool checklife = false;
-                        bool checkdead = false;
-                        for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
-                        {
-                            if (i->GetSource() && i->GetSource()->IsAlive() &&
-                                i->GetSource()->GetPositionX() <= POS_X_NORTH &&
-                                i->GetSource()->GetPositionX() >= POS_X_SOUTH &&
-                                i->GetSource()->GetPositionY() <= POS_Y_GATE &&
-                                i->GetSource()->GetPositionY() >= POS_Y_EAST)
-                            {
-                                checklife = true;
-                            }
-                            else if (i->GetSource() && i->GetSource()->IsAlive() &&
-                                i->GetSource()->GetPositionX() <= POS_X_NORTH &&
-                                i->GetSource()->GetPositionX() >= POS_X_SOUTH &&
-                                i->GetSource()->GetPositionY() >= POS_Y_GATE &&
-                                i->GetSource()->GetPositionY() <= POS_Y_WEST)
-                            {
-                                checkdead = true;
-                            }
-
-                            if (checklife && checkdead)
-                                return true;
-                        }
+                        checklife = true;
                     }
+                    else if (i->GetSource() && i->GetSource()->IsAlive() &&
+                        i->GetSource()->GetPositionX() <= POS_X_NORTH &&
+                        i->GetSource()->GetPositionX() >= POS_X_SOUTH &&
+                        i->GetSource()->GetPositionY() >= POS_Y_GATE &&
+                        i->GetSource()->GetPositionY() <= POS_Y_WEST)
+                    {
+                        checkdead = true;
+                    }
+
+                    if (checklife && checkdead)
+                        return true;
                 }
 
                 return false;
@@ -421,9 +412,9 @@ class boss_gothik : public CreatureScript
                         case EVENT_SUMMON:
                             if (waves[waveCount].entry)
                             {
-                                if ((waves[waveCount].mode == 2) && (GetDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL))
+                                if ((waves[waveCount].mode == 2) && (GetDifficulty() == DIFFICULTY_25_N))
                                    DoGothikSummon(waves[waveCount].entry);
-                                else if ((waves[waveCount].mode == 0) && (GetDifficulty() == RAID_DIFFICULTY_10MAN_NORMAL))
+                                else if ((waves[waveCount].mode == 0) && (GetDifficulty() == DIFFICULTY_10_N))
                                     DoGothikSummon(waves[waveCount].entry);
                                 else if (waves[waveCount].mode == 1)
                                     DoGothikSummon(waves[waveCount].entry);
@@ -443,9 +434,9 @@ class boss_gothik : public CreatureScript
 
                                 if (waves[waveCount].mode == 1)
                                     events.ScheduleEvent(EVENT_SUMMON, waves[waveCount].time);
-                                else if ((waves[waveCount].mode == 2) && (GetDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL))
+                                else if ((waves[waveCount].mode == 2) && (GetDifficulty() == DIFFICULTY_25_N))
                                     events.ScheduleEvent(EVENT_SUMMON, waves[waveCount].time);
-                                else if ((waves[waveCount].mode == 0) && (GetDifficulty() == RAID_DIFFICULTY_10MAN_NORMAL))
+                                else if ((waves[waveCount].mode == 0) && (GetDifficulty() == DIFFICULTY_10_N))
                                     events.ScheduleEvent(EVENT_SUMMON, waves[waveCount].time);
                                 else
                                     events.ScheduleEvent(EVENT_SUMMON, 0);
@@ -557,20 +548,13 @@ class npc_gothik_minion : public CreatureScript
                 if (!_EnterEvadeMode())
                     return;
 
-                Map* map = me->GetMap();
-                if (map->IsDungeon())
+                Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
+                for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                 {
-                    Map::PlayerList const &PlayerList = map->GetPlayers();
-                    if (!PlayerList.isEmpty())
+                    if (i->GetSource() && i->GetSource()->IsAlive() && isOnSameSide(i->GetSource()))
                     {
-                        for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
-                        {
-                            if (i->GetSource() && i->GetSource()->IsAlive() && isOnSameSide(i->GetSource()))
-                            {
-                                AttackStart(i->GetSource());
-                                return;
-                            }
-                        }
+                        AttackStart(i->GetSource());
+                        return;
                     }
                 }
 

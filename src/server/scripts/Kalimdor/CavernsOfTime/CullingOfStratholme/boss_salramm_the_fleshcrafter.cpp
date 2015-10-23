@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -68,7 +68,7 @@ class boss_salramm : public CreatureScript
                 events.ScheduleEvent(EVENT_CURSE_FLESH, 30000);
                 events.ScheduleEvent(EVENT_SUMMON_GHOULS, urand(19000, 24000));
                 events.ScheduleEvent(EVENT_SHADOW_BOLT, urand(8000, 12000));
-                events.ScheduleEvent(EVENT_STEAL_FLESH, 12345); /// @todo: adjust timer 
+                events.ScheduleEvent(EVENT_STEAL_FLESH, 12345); /// @todo: adjust timer
             }
 
             void ExecuteEvent(uint32 eventId) override

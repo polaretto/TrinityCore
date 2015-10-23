@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -29,11 +29,6 @@ class instance_the_botanica : public InstanceMapScript
             instance_the_botanica_InstanceMapScript(Map* map) : InstanceScript(map)
             {
                 SetHeaders(DataHeader);
-                CommanderSarannisGUID       = 0;
-                HighBotanistFreywinnGUID    = 0;
-                ThorngrinTheTenderGUID      = 0;
-                LajGUID                     = 0;
-                WarpSplinterGUID            = 0;
             }
 
             void OnCreatureCreate(Creature* creature) override
@@ -60,7 +55,7 @@ class instance_the_botanica : public InstanceMapScript
                 }
             }
 
-            uint64 GetData64(uint32 type) const override
+            ObjectGuid GetGuidData(uint32 type) const override
             {
                 switch (type)
                 {
@@ -78,7 +73,7 @@ class instance_the_botanica : public InstanceMapScript
                         break;
                 }
 
-                return 0;
+                return ObjectGuid::Empty;
             }
 
             bool SetBossState(uint32 type, EncounterState state) override
@@ -102,11 +97,11 @@ class instance_the_botanica : public InstanceMapScript
             }
 
         protected:
-            uint64 CommanderSarannisGUID;
-            uint64 HighBotanistFreywinnGUID;
-            uint64 ThorngrinTheTenderGUID;
-            uint64 LajGUID;
-            uint64 WarpSplinterGUID;
+            ObjectGuid CommanderSarannisGUID;
+            ObjectGuid HighBotanistFreywinnGUID;
+            ObjectGuid ThorngrinTheTenderGUID;
+            ObjectGuid LajGUID;
+            ObjectGuid WarpSplinterGUID;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

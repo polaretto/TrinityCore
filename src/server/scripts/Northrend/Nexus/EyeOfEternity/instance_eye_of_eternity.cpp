@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -37,19 +37,13 @@ public:
         {
             SetHeaders(DataHeader);
             SetBossNumber(MAX_ENCOUNTER);
+        }
 
-            vortexTriggers.clear();
-            portalTriggers.clear();
-
-            malygosGUID = 0;
-            irisGUID = 0;
-            lastPortalGUID = 0;
-            platformGUID = 0;
-            exitPortalGUID = 0;
-            alexstraszaBunnyGUID = 0;
-            heartOfMagicGUID = 0;
-            giftBoxBunnyGUID = 0;
-        };
+        void OnPlayerEnter(Player* player) override
+        {
+            if (GetBossState(DATA_MALYGOS_EVENT) == DONE)
+                player->CastSpell(player, SPELL_SUMMOM_RED_DRAGON_BUDDY, true);
+        }
 
         bool SetBossState(uint32 type, EncounterState state) override
         {
@@ -60,7 +54,7 @@ public:
             {
                 if (state == FAIL)
                 {
-                    for (std::list<uint64>::const_iterator itr_trigger = portalTriggers.begin(); itr_trigger != portalTriggers.end(); ++itr_trigger)
+                    for (GuidList::const_iterator itr_trigger = portalTriggers.begin(); itr_trigger != portalTriggers.end(); ++itr_trigger)
                     {
                         if (Creature* trigger = instance->GetCreature(*itr_trigger))
                         {
@@ -83,17 +77,16 @@ public:
 
         /// @todo this should be handled in map, maybe add a summon function in map
         // There is no other way afaik...
-        void SpawnGameObject(uint32 entry, Position& pos)
+        void SpawnGameObject(uint32 entry, Position const& pos)
         {
-            GameObject* go = new GameObject;
-            if (!go->Create(sObjectMgr->GenerateLowGuid(HIGHGUID_GAMEOBJECT), entry, instance,
+            GameObject* go = new GameObject();
+            if (!go->Create(instance->GenerateLowGuid<HighGuid::GameObject>(), entry, instance,
                 PHASEMASK_NORMAL, pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), pos.GetOrientation(),
                 0, 0, 0, 0, 120, GO_STATE_READY))
             {
                 delete go;
                 return;
             }
-
             instance->AddToMap(go);
         }
 
@@ -105,30 +98,19 @@ public:
                     platformGUID = go->GetGUID();
                     break;
                 case GO_FOCUSING_IRIS_10:
-                    if (instance->GetDifficulty() == RAID_DIFFICULTY_10MAN_NORMAL)
-                    {
-                        irisGUID = go->GetGUID();
-                        focusingIrisPosition = go->GetPosition();
-                    }
-                    break;
                 case GO_FOCUSING_IRIS_25:
-                    if (instance->GetDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL)
-                    {
-                        irisGUID = go->GetGUID();
-                        focusingIrisPosition = go->GetPosition();
-                    }
+                    irisGUID = go->GetGUID();
+                    focusingIrisPosition = go->GetPosition();
                     break;
                 case GO_EXIT_PORTAL:
                     exitPortalGUID = go->GetGUID();
                     exitPortalPosition = go->GetPosition();
                     break;
                 case GO_HEART_OF_MAGIC_10:
-                    if (instance->GetDifficulty() == RAID_DIFFICULTY_10MAN_NORMAL)
-                        heartOfMagicGUID = go->GetGUID();
-                    break;
                 case GO_HEART_OF_MAGIC_25:
-                    if (instance->GetDifficulty() == RAID_DIFFICULTY_25MAN_NORMAL)
-                        heartOfMagicGUID = go->GetGUID();
+                    heartOfMagicGUID = go->GetGUID();
+                    break;
+                default:
                     break;
             }
         }
@@ -173,10 +155,10 @@ public:
             if (eventId == EVENT_FOCUSING_IRIS)
             {
                 if (Creature* alexstraszaBunny = instance->GetCreature(alexstraszaBunnyGUID))
-                {
                     alexstraszaBunny->CastSpell(alexstraszaBunny, SPELL_IRIS_OPENED);
-                    instance->GetGameObject(irisGUID)->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
-                }
+
+                if (GameObject* iris = instance->GetGameObject(irisGUID))
+                    iris->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_IN_USE);
 
                 if (Creature* malygos = instance->GetCreature(malygosGUID))
                     malygos->AI()->DoAction(0); // ACTION_LAND_ENCOUNTER_START
@@ -190,17 +172,17 @@ public:
         {
             if (Creature* malygos = instance->GetCreature(malygosGUID))
             {
-                std::list<HostileReference*> m_threatlist = malygos->getThreatManager().getThreatList();
-                for (std::list<uint64>::const_iterator itr_vortex = vortexTriggers.begin(); itr_vortex != vortexTriggers.end(); ++itr_vortex)
+                ThreatContainer::StorageType const& threatList = malygos->getThreatManager().getThreatList();
+                for (GuidList::const_iterator itr_vortex = vortexTriggers.begin(); itr_vortex != vortexTriggers.end(); ++itr_vortex)
                 {
-                    if (m_threatlist.empty())
+                    if (threatList.empty())
                         return;
 
                     uint8 counter = 0;
                     if (Creature* trigger = instance->GetCreature(*itr_vortex))
                     {
                         // each trigger have to cast the spell to 5 players.
-                        for (std::list<HostileReference*>::const_iterator itr = m_threatlist.begin(); itr!= m_threatlist.end(); ++itr)
+                        for (ThreatContainer::StorageType::const_iterator itr = threatList.begin(); itr != threatList.end(); ++itr)
                         {
                             if (counter >= 5)
                                 break;
@@ -225,7 +207,7 @@ public:
         {
             bool next = (lastPortalGUID == portalTriggers.back() || !lastPortalGUID ? true : false);
 
-            for (std::list<uint64>::const_iterator itr_trigger = portalTriggers.begin(); itr_trigger != portalTriggers.end(); ++itr_trigger)
+            for (GuidList::const_iterator itr_trigger = portalTriggers.begin(); itr_trigger != portalTriggers.end(); ++itr_trigger)
             {
                 if (next)
                 {
@@ -253,12 +235,12 @@ public:
                     PowerSparksHandling();
                     break;
                 case DATA_RESPAWN_IRIS:
-                    SpawnGameObject(instance->GetDifficulty() == RAID_DIFFICULTY_10MAN_NORMAL ? GO_FOCUSING_IRIS_10 : GO_FOCUSING_IRIS_25, focusingIrisPosition);
+                    SpawnGameObject(instance->GetDifficultyID() == DIFFICULTY_10_N ? GO_FOCUSING_IRIS_10 : GO_FOCUSING_IRIS_25, focusingIrisPosition);
                     break;
             }
         }
 
-        uint64 GetData64(uint32 data) const override
+        ObjectGuid GetGuidData(uint32 data) const override
         {
             switch (data)
             {
@@ -278,20 +260,20 @@ public:
                     return giftBoxBunnyGUID;
             }
 
-            return 0;
+            return ObjectGuid::Empty;
         }
 
     private:
-        std::list<uint64> vortexTriggers;
-        std::list<uint64> portalTriggers;
-        uint64 malygosGUID;
-        uint64 irisGUID;
-        uint64 lastPortalGUID;
-        uint64 platformGUID;
-        uint64 exitPortalGUID;
-        uint64 heartOfMagicGUID;
-        uint64 alexstraszaBunnyGUID;
-        uint64 giftBoxBunnyGUID;
+        GuidList vortexTriggers;
+        GuidList portalTriggers;
+        ObjectGuid malygosGUID;
+        ObjectGuid irisGUID;
+        ObjectGuid lastPortalGUID;
+        ObjectGuid platformGUID;
+        ObjectGuid exitPortalGUID;
+        ObjectGuid heartOfMagicGUID;
+        ObjectGuid alexstraszaBunnyGUID;
+        ObjectGuid giftBoxBunnyGUID;
         Position focusingIrisPosition;
         Position exitPortalPosition;
     };

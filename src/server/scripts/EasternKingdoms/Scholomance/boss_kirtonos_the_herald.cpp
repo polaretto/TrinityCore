@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -98,9 +98,9 @@ class boss_kirtonos_the_herald : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
-                if (GameObject* gate = me->GetMap()->GetGameObject(instance->GetData64(GO_GATE_KIRTONOS)))
+                if (GameObject* gate = me->GetMap()->GetGameObject(instance->GetGuidData(GO_GATE_KIRTONOS)))
                     gate->SetGoState(GO_STATE_ACTIVE);
-                if (GameObject* brazier = me->GetMap()->GetGameObject(instance->GetData64(GO_BRAZIER_OF_THE_HERALD)))
+                if (GameObject* brazier = me->GetMap()->GetGameObject(instance->GetGuidData(GO_BRAZIER_OF_THE_HERALD)))
                 {
                     brazier->ResetDoorOrButton();
                     brazier->SetGoState(GO_STATE_READY);
@@ -110,9 +110,9 @@ class boss_kirtonos_the_herald : public CreatureScript
 
             void EnterEvadeMode() override
             {
-                if (GameObject* gate = me->GetMap()->GetGameObject(instance->GetData64(GO_GATE_KIRTONOS)))
+                if (GameObject* gate = me->GetMap()->GetGameObject(instance->GetGuidData(GO_GATE_KIRTONOS)))
                     gate->SetGoState(GO_STATE_ACTIVE);
-                if (GameObject* brazier = me->GetMap()->GetGameObject(instance->GetData64(GO_BRAZIER_OF_THE_HERALD)))
+                if (GameObject* brazier = me->GetMap()->GetGameObject(instance->GetGuidData(GO_BRAZIER_OF_THE_HERALD)))
                 {
                     brazier->ResetDoorOrButton();
                     brazier->SetGoState(GO_STATE_READY);
@@ -160,13 +160,13 @@ class boss_kirtonos_the_herald : public CreatureScript
                                 events.ScheduleEvent(INTRO_3, 1000);
                                 break;
                             case INTRO_3:
-                                if (GameObject* gate = me->GetMap()->GetGameObject(instance->GetData64(GO_GATE_KIRTONOS)))
+                                if (GameObject* gate = me->GetMap()->GetGameObject(instance->GetGuidData(GO_GATE_KIRTONOS)))
                                     gate->SetGoState(GO_STATE_READY);
                                 me->SetFacingTo(0.01745329f);
                                 events.ScheduleEvent(INTRO_4, 3000);
                                 break;
                             case INTRO_4:
-                                if (GameObject* brazier = me->GetMap()->GetGameObject(instance->GetData64(GO_BRAZIER_OF_THE_HERALD)))
+                                if (GameObject* brazier = me->GetMap()->GetGameObject(instance->GetGuidData(GO_BRAZIER_OF_THE_HERALD)))
                                     brazier->SetGoState(GO_STATE_READY);
                                 me->SetWalk(true);
                                 me->SetDisableGravity(false);
@@ -176,7 +176,7 @@ class boss_kirtonos_the_herald : public CreatureScript
                                 break;
                             case INTRO_5:
                                 me->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
-                                me->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(WEAPON_KIRTONOS_STAFF));
+                                me->SetVirtualItem(0, uint32(WEAPON_KIRTONOS_STAFF));
                                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE|UNIT_FLAG_NOT_SELECTABLE);
                                 me->SetReactState(REACT_AGGRESSIVE);
                                 events.ScheduleEvent(INTRO_6, 5000);
@@ -231,13 +231,13 @@ class boss_kirtonos_the_herald : public CreatureScript
                             if (me->HasAura(SPELL_KIRTONOS_TRANSFORM))
                             {
                                 me->RemoveAura(SPELL_KIRTONOS_TRANSFORM);
-                                me->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(0));
+                                me->SetVirtualItem(0, uint32(0));
                                 me->SetCanFly(false);
                             }
                             else
                             {
                                 DoCast(me, SPELL_KIRTONOS_TRANSFORM);
-                                me->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(WEAPON_KIRTONOS_STAFF));
+                                me->SetVirtualItem(0, uint32(WEAPON_KIRTONOS_STAFF));
                                 me->SetCanFly(true);
                             }
                             events.ScheduleEvent(EVENT_KIRTONOS_TRANSFORM, urand(16000, 18000));

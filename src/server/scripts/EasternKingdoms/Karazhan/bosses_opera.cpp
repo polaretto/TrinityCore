@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -250,11 +250,11 @@ public:
 
         void Initialize()
         {
-            DorotheeGUID = 0;
+            DorotheeGUID.Clear();
             YipTimer = 10000;
         }
 
-        uint64 DorotheeGUID;
+        ObjectGuid DorotheeGUID;
         uint32 YipTimer;
 
         void Reset() override
@@ -266,7 +266,7 @@ public:
 
         void JustDied(Unit* /*killer*/) override
         {
-            if (DorotheeGUID)
+            if (!DorotheeGUID.IsEmpty())
             {
                 Creature* Dorothee = (ObjectAccessor::GetCreature((*me), DorotheeGUID));
                 if (Dorothee && Dorothee->IsAlive())
@@ -710,10 +710,10 @@ public:
             Talk(SAY_CRONE_DEATH);
 
             instance->SetData(TYPE_OPERA, DONE);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_STAGEDOORLEFT), true);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_STAGEDOORRIGHT), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_STAGEDOORLEFT), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_STAGEDOORRIGHT), true);
 
-            if (GameObject* pSideEntrance = instance->instance->GetGameObject(instance->GetData64(DATA_GO_SIDE_ENTRANCE_DOOR)))
+            if (GameObject* pSideEntrance = instance->instance->GetGameObject(instance->GetGuidData(DATA_GO_SIDE_ENTRANCE_DOOR)))
                 pSideEntrance->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
         }
 
@@ -868,7 +868,7 @@ public:
             FearTimer = urand(25000, 35000);
             SwipeTimer = 5000;
 
-            HoodGUID = 0;
+            HoodGUID.Clear();
             TempThreat = 0;
 
             IsChasing = false;
@@ -880,7 +880,7 @@ public:
         uint32 FearTimer;
         uint32 SwipeTimer;
 
-        uint64 HoodGUID;
+        ObjectGuid HoodGUID;
         float TempThreat;
 
         bool IsChasing;
@@ -910,10 +910,10 @@ public:
             DoPlaySoundToSet(me, SOUND_WOLF_DEATH);
 
             instance->SetData(TYPE_OPERA, DONE);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_STAGEDOORLEFT), true);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_STAGEDOORRIGHT), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_STAGEDOORLEFT), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_STAGEDOORRIGHT), true);
 
-            if (GameObject* pSideEntrance = instance->instance->GetGameObject(instance->GetData64(DATA_GO_SIDE_ENTRANCE_DOOR)))
+            if (GameObject* pSideEntrance = instance->instance->GetGameObject(instance->GetGuidData(DATA_GO_SIDE_ENTRANCE_DOOR)))
                 pSideEntrance->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
         }
 
@@ -947,7 +947,7 @@ public:
 
                     if (Unit* target = ObjectAccessor::GetUnit(*me, HoodGUID))
                     {
-                        HoodGUID = 0;
+                        HoodGUID.Clear();
                         if (DoGetThreat(target))
                             DoModifyThreatPercent(target, -100);
                         me->AddThreat(target, TempThreat);
@@ -1073,7 +1073,7 @@ public:
 
         void Initialize()
         {
-            RomuloGUID = 0;
+            RomuloGUID.Clear();
             Phase = PHASE_JULIANNE;
 
             BlindingPassionTimer = 30000;
@@ -1093,7 +1093,7 @@ public:
         uint32 EntryYellTimer;
         uint32 AggroYellTimer;
 
-        uint64 RomuloGUID;
+        ObjectGuid RomuloGUID;
 
         uint32 Phase;
 
@@ -1160,9 +1160,9 @@ public:
             Talk(SAY_JULIANNE_DEATH02);
 
             instance->SetData(TYPE_OPERA, DONE);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_STAGEDOORLEFT), true);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_STAGEDOORRIGHT), true);
-            if (GameObject* pSideEntrance = instance->instance->GetGameObject(instance->GetData64(DATA_GO_SIDE_ENTRANCE_DOOR)))
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_STAGEDOORLEFT), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_STAGEDOORRIGHT), true);
+            if (GameObject* pSideEntrance = instance->instance->GetGameObject(instance->GetGuidData(DATA_GO_SIDE_ENTRANCE_DOOR)))
                 pSideEntrance->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
         }
 
@@ -1197,7 +1197,7 @@ public:
 
         void Initialize()
         {
-            JulianneGUID = 0;
+            JulianneGUID.Clear();
             Phase = PHASE_ROMULO;
 
             BackwardLungeTimer = 15000;
@@ -1212,7 +1212,7 @@ public:
 
         InstanceScript* instance;
 
-        uint64 JulianneGUID;
+        ObjectGuid JulianneGUID;
         uint32 Phase;
 
         uint32 EntryYellTimer;
@@ -1271,7 +1271,7 @@ public:
                         Julianne->setDeathState(JUST_DIED);
                         Julianne->CombatStop(true);
                         Julianne->DeleteThreatList();
-                        Julianne->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                        Julianne->SetUInt32Value(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
                     }
                     return;
                 }
@@ -1293,7 +1293,7 @@ public:
         void EnterCombat(Unit* /*who*/) override
         {
             Talk(SAY_ROMULO_AGGRO);
-            if (JulianneGUID)
+            if (!JulianneGUID.IsEmpty())
             {
                 Creature* Julianne = (ObjectAccessor::GetCreature((*me), JulianneGUID));
                 if (Julianne && Julianne->GetVictim())
@@ -1318,10 +1318,10 @@ public:
             Talk(SAY_ROMULO_DEATH);
 
             instance->SetData(TYPE_OPERA, DONE);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_STAGEDOORLEFT), true);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_STAGEDOORRIGHT), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_STAGEDOORLEFT), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_STAGEDOORRIGHT), true);
 
-            if (GameObject* pSideEntrance = instance->instance->GetGameObject(instance->GetData64(DATA_GO_SIDE_ENTRANCE_DOOR)))
+            if (GameObject* pSideEntrance = instance->instance->GetGameObject(instance->GetGuidData(DATA_GO_SIDE_ENTRANCE_DOOR)))
                 pSideEntrance->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED);
         }
 
@@ -1547,7 +1547,7 @@ void boss_julianne::boss_julianneAI::DamageTaken(Unit* /*done_by*/, uint32 &dama
                 Romulo->setDeathState(JUST_DIED);
                 Romulo->CombatStop(true);
                 Romulo->DeleteThreatList();
-                Romulo->SetUInt32Value(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                Romulo->SetUInt32Value(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
             }
 
             return;

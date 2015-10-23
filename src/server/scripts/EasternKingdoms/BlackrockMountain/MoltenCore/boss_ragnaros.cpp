@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -86,6 +86,7 @@ class boss_ragnaros : public CreatureScript
                 _introState = 0;
                 me->SetReactState(REACT_PASSIVE);
                 me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                SetCombatMovement(false);
             }
 
             void Initialize()
@@ -153,7 +154,7 @@ class boss_ragnaros : public CreatureScript
                             break;
                         case EVENT_INTRO_4:
                             Talk(SAY_ARRIVAL5_RAG);
-                            if (Creature* executus = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_MAJORDOMO_EXECUTUS)))
+                            if (Creature* executus = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_MAJORDOMO_EXECUTUS)))
                                 me->Kill(executus);
                             break;
                         case EVENT_INTRO_5:
@@ -225,7 +226,7 @@ class boss_ragnaros : public CreatureScript
                                 events.ScheduleEvent(EVENT_ELEMENTAL_FIRE, urand(10000, 14000));
                                 break;
                             case EVENT_MAGMA_BLAST:
-                                if (me->IsWithinMeleeRange(me->GetVictim()))
+                                if (!me->IsWithinMeleeRange(me->GetVictim()))
                                 {
                                     DoCastVictim(SPELL_MAGMA_BLAST);
                                     if (!_hasYelledMagmaBurst)

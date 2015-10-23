@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -78,7 +78,7 @@ enum Shadowmourne
     SPELL_THIRST_QUENCHED                   = 72154,
 };
 
-uint32 const vampireAuras[3][MAX_DIFFICULTY] =
+uint32 const vampireAuras[3][4] =
 {
     {70867, 71473, 71532, 71533},
     {70879, 71525, 71530, 71531},
@@ -129,7 +129,7 @@ Position const mincharPos = {4629.3711f, 2782.6089f, 424.6390f, 0.000000f};
 bool IsVampire(Unit const* unit)
 {
     for (uint8 i = 0; i < 3; ++i)
-        if (unit->HasAura(vampireAuras[i][unit->GetMap()->GetSpawnMode()]))
+        if (unit->HasAura(vampireAuras[i][unit->GetMap()->GetSpawnMode() - DIFFICULTY_10_N]))
             return true;
     return false;
 }
@@ -148,7 +148,7 @@ class boss_blood_queen_lana_thel : public CreatureScript
 
             void Initialize()
             {
-                _offtankGUID = 0;
+                _offtankGUID.Clear();
                 _creditBloodQuickening = false;
                 _killMinchar = false;
             }
@@ -210,7 +210,7 @@ class boss_blood_queen_lana_thel : public CreatureScript
                         minchar->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND);
                         minchar->SetCanFly(false);
                         minchar->RemoveAllAuras();
-                        minchar->GetMotionMaster()->MoveCharge(4629.3711f, 2782.6089f, 401.5301f, SPEED_CHARGE/3.0f);
+                        minchar->GetMotionMaster()->MoveCharge(4629.3711f, 2782.6089f, 401.5301f, SPEED_CHARGE / 3.0f);
                     }
                 }
             }
@@ -278,7 +278,7 @@ class boss_blood_queen_lana_thel : public CreatureScript
                     Talk(SAY_KILL);
             }
 
-            void SetGUID(uint64 guid, int32 type = 0) override
+            void SetGUID(ObjectGuid guid, int32 type = 0) override
             {
                 switch (type)
                 {
@@ -390,13 +390,13 @@ class boss_blood_queen_lana_thel : public CreatureScript
                                     }
                                 }
                                 else
-                                    _offtankGUID = 0;
+                                    _offtankGUID.Clear();
                             }
                             events.ScheduleEvent(EVENT_BLOOD_MIRROR, 2500, EVENT_GROUP_CANCELLABLE);
                             break;
                         }
                         case EVENT_DELIRIOUS_SLASH:
-                            if (_offtankGUID && !me->HasByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND | UNIT_BYTE1_FLAG_HOVER))
+                            if (!_offtankGUID.IsEmpty() && !me->HasByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_ALWAYS_STAND | UNIT_BYTE1_FLAG_HOVER))
                                 if (Player* _offtank = ObjectAccessor::GetPlayer(*me, _offtankGUID))
                                     DoCast(_offtank, SPELL_DELIRIOUS_SLASH);
                             events.ScheduleEvent(EVENT_DELIRIOUS_SLASH, urand(20000, 24000), EVENT_GROUP_NORMAL);
@@ -458,12 +458,12 @@ class boss_blood_queen_lana_thel : public CreatureScript
                 DoMeleeAttackIfReady();
             }
 
-            bool WasVampire(uint64 guid)
+            bool WasVampire(ObjectGuid guid) const
             {
                 return _vampires.count(guid) != 0;
             }
 
-            bool WasBloodbolted(uint64 guid)
+            bool WasBloodbolted(ObjectGuid guid) const
             {
                 return _bloodboltedPlayers.count(guid) != 0;
             }
@@ -501,9 +501,9 @@ class boss_blood_queen_lana_thel : public CreatureScript
                 return Trinity::Containers::SelectRandomContainerElement(tempTargets);
             }
 
-            std::set<uint64> _vampires;
-            std::set<uint64> _bloodboltedPlayers;
-            uint64 _offtankGUID;
+            GuidSet _vampires;
+            GuidSet _bloodboltedPlayers;
+            ObjectGuid _offtankGUID;
             bool _creditBloodQuickening;
             bool _killMinchar;
         };
@@ -553,8 +553,7 @@ class spell_blood_queen_vampiric_bite : public SpellScriptLoader
                 if (GetCaster()->GetTypeId() != TYPEID_PLAYER)
                     return;
 
-                uint32 spellId = sSpellMgr->GetSpellIdForDifficulty(SPELL_FRENZIED_BLOODTHIRST, GetCaster());
-                GetCaster()->RemoveAura(spellId, 0, 0, AURA_REMOVE_BY_ENEMY_SPELL);
+                GetCaster()->RemoveAura(SPELL_FRENZIED_BLOODTHIRST, ObjectGuid::Empty, 0, AURA_REMOVE_BY_ENEMY_SPELL);
                 GetCaster()->CastSpell(GetCaster(), SPELL_ESSENCE_OF_THE_BLOOD_QUEEN_PLR, TRIGGERED_FULL_MASK);
 
                 // Shadowmourne questline
@@ -570,7 +569,7 @@ class spell_blood_queen_vampiric_bite : public SpellScriptLoader
                 }
 
                 if (InstanceScript* instance = GetCaster()->GetInstanceScript())
-                    if (Creature* bloodQueen = ObjectAccessor::GetCreature(*GetCaster(), instance->GetData64(DATA_BLOOD_QUEEN_LANA_THEL)))
+                    if (Creature* bloodQueen = ObjectAccessor::GetCreature(*GetCaster(), instance->GetGuidData(DATA_BLOOD_QUEEN_LANA_THEL)))
                         bloodQueen->AI()->SetGUID(GetHitUnit()->GetGUID(), GUID_VAMPIRE);
             }
 
@@ -606,7 +605,7 @@ class spell_blood_queen_frenzied_bloodthirst : public SpellScriptLoader
             void OnApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
             {
                 if (InstanceScript* instance = GetTarget()->GetInstanceScript())
-                    if (Creature* bloodQueen = ObjectAccessor::GetCreature(*GetTarget(), instance->GetData64(DATA_BLOOD_QUEEN_LANA_THEL)))
+                    if (Creature* bloodQueen = ObjectAccessor::GetCreature(*GetTarget(), instance->GetGuidData(DATA_BLOOD_QUEEN_LANA_THEL)))
                         bloodQueen->AI()->Talk(EMOTE_BLOODTHIRST, GetTarget());
             }
 
@@ -615,7 +614,7 @@ class spell_blood_queen_frenzied_bloodthirst : public SpellScriptLoader
                 Unit* target = GetTarget();
                 if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
                     if (InstanceScript* instance = target->GetInstanceScript())
-                        if (Creature* bloodQueen = ObjectAccessor::GetCreature(*target, instance->GetData64(DATA_BLOOD_QUEEN_LANA_THEL)))
+                        if (Creature* bloodQueen = ObjectAccessor::GetCreature(*target, instance->GetGuidData(DATA_BLOOD_QUEEN_LANA_THEL)))
                         {
                             // this needs to be done BEFORE charm aura or we hit an assert in Unit::SetCharmedBy
                             if (target->GetVehicleKit())
@@ -806,8 +805,8 @@ class spell_blood_queen_pact_of_the_darkfallen_dmg : public SpellScriptLoader
             // this is an additional effect to be executed
             void PeriodicTick(AuraEffect const* aurEff)
             {
-                SpellInfo const* damageSpell = sSpellMgr->EnsureSpellInfo(SPELL_PACT_OF_THE_DARKFALLEN_DAMAGE);
-                int32 damage = damageSpell->Effects[EFFECT_0].CalcValue();
+                SpellInfo const* damageSpell = sSpellMgr->AssertSpellInfo(SPELL_PACT_OF_THE_DARKFALLEN_DAMAGE);
+                int32 damage = damageSpell->GetEffect(EFFECT_0)->CalcValue();
                 float multiplier = 0.3375f + 0.1f * uint32(aurEff->GetTickNumber()/10); // do not convert to 0.01f - we need tick number/10 as INT (damage increases every 10 ticks)
                 damage = int32(damage * multiplier);
                 GetTarget()->CastCustomSpell(SPELL_PACT_OF_THE_DARKFALLEN_DAMAGE, SPELLVALUE_BASE_POINT0, damage, GetTarget(), true);

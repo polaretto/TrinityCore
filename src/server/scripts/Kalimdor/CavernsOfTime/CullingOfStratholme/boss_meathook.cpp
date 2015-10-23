@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -70,6 +70,7 @@ class boss_meathook : public CreatureScript
                         if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 100.0f, true))
                             DoCast(target, SPELL_CONSTRICTING_CHAINS);
                         events.ScheduleEvent(EVENT_CHAIN, urand(2000, 4000));
+                        break;
                     case EVENT_DISEASE:
                         DoCastAOE(SPELL_DISEASE_EXPULSION);
                         events.ScheduleEvent(EVENT_DISEASE, urand(1500, 4000));

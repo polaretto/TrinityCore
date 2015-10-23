@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -17,14 +17,12 @@
  */
 
 #include "ScriptedCreature.h"
-#include "Item.h"
 #include "Spell.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "Cell.h"
 #include "CellImpl.h"
 #include "ObjectMgr.h"
-#include "TemporarySummon.h"
 
 // Spell summary for ScriptedAI::SelectSpell
 struct TSpellSummary
@@ -170,7 +168,7 @@ void ScriptedAI::DoPlaySoundToSet(WorldObject* source, uint32 soundId)
 
     if (!sSoundEntriesStore.LookupEntry(soundId))
     {
-        TC_LOG_ERROR("scripts", "Invalid soundId %u used in DoPlaySoundToSet (Source: TypeId %u, GUID %u)", soundId, source->GetTypeId(), source->GetGUIDLow());
+        TC_LOG_ERROR("scripts", "Invalid soundId %u used in DoPlaySoundToSet (Source: %s)", soundId, source->GetGUID().ToString().c_str());
         return;
     }
 
@@ -182,7 +180,7 @@ Creature* ScriptedAI::DoSpawnCreature(uint32 entry, float offsetX, float offsetY
     return me->SummonCreature(entry, me->GetPositionX() + offsetX, me->GetPositionY() + offsetY, me->GetPositionZ() + offsetZ, angle, TempSummonType(type), despawntime);
 }
 
-SpellInfo const* ScriptedAI::SelectSpell(Unit* target, uint32 school, uint32 mechanic, SelectTargetType targets, uint32 powerCostMin, uint32 powerCostMax, float rangeMin, float rangeMax, SelectEffect effects)
+SpellInfo const* ScriptedAI::SelectSpell(Unit* target, uint32 school, uint32 mechanic, SelectTargetType targets, float rangeMin, float rangeMax, SelectEffect effect)
 {
     //No target so we can't cast
     if (!target)
@@ -215,7 +213,7 @@ SpellInfo const* ScriptedAI::SelectSpell(Unit* target, uint32 school, uint32 mec
             continue;
 
         //Check the type of spell if we are looking for a specific spell type
-        if (effects && !(SpellSummary[me->m_spells[i]].Effects & (1 << (effects-1))))
+        if (effect && !(SpellSummary[me->m_spells[i]].Effects & (1 << (effect-1))))
             continue;
 
         //Check for school if specified
@@ -224,17 +222,6 @@ SpellInfo const* ScriptedAI::SelectSpell(Unit* target, uint32 school, uint32 mec
 
         //Check for spell mechanic if specified
         if (mechanic && tempSpell->Mechanic != mechanic)
-            continue;
-
-        //Make sure that the spell uses the requested amount of power
-        if (powerCostMin && tempSpell->ManaCost < powerCostMin)
-            continue;
-
-        if (powerCostMax && tempSpell->ManaCost > powerCostMax)
-            continue;
-
-        //Continue if we don't have the mana to actually cast this spell
-        if (tempSpell->ManaCost > me->GetPower(Powers(tempSpell->PowerType)))
             continue;
 
         //Check if the spell meets our range requirements
@@ -311,8 +298,8 @@ void ScriptedAI::DoTeleportPlayer(Unit* unit, float x, float y, float z, float o
     if (Player* player = unit->ToPlayer())
         player->TeleportTo(unit->GetMapId(), x, y, z, o, TELE_TO_NOT_LEAVE_COMBAT);
     else
-        TC_LOG_ERROR("scripts", "Creature " UI64FMTD " (Entry: %u) Tried to teleport non-player unit (Type: %u GUID: " UI64FMTD ") to x: %f y:%f z: %f o: %f. Aborted.",
-            me->GetGUID(), me->GetEntry(), unit->GetTypeId(), unit->GetGUID(), x, y, z, o);
+        TC_LOG_ERROR("scripts", "Creature %s Tried to teleport non-player unit (%s) to x: %f y:%f z: %f o: %f. Aborted.",
+            me->GetGUID().ToString().c_str(), unit->GetGUID().ToString().c_str(), x, y, z, o);
 }
 
 void ScriptedAI::DoTeleportAll(float x, float y, float z, float o)
@@ -384,13 +371,13 @@ void ScriptedAI::SetEquipmentSlots(bool loadDefault, int32 mainHand /*= EQUIP_NO
     }
 
     if (mainHand >= 0)
-        me->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, uint32(mainHand));
+        me->SetVirtualItem(0, uint32(mainHand));
 
     if (offHand >= 0)
-        me->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, uint32(offHand));
+        me->SetVirtualItem(1, uint32(offHand));
 
     if (ranged >= 0)
-        me->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, uint32(ranged));
+        me->SetVirtualItem(2, uint32(ranged));
 }
 
 void ScriptedAI::SetCombatMovement(bool allowMovement)
@@ -466,6 +453,7 @@ void BossAI::_Reset()
     if (!me->IsAlive())
         return;
 
+    me->SetCombatPulseDelay(0);
     me->ResetLootMode();
     events.Reset();
     summons.DespawnAll();
@@ -483,6 +471,7 @@ void BossAI::_JustDied()
 
 void BossAI::_EnterCombat()
 {
+    me->SetCombatPulseDelay(5);
     me->setActive(true);
     DoZoneInCombat();
     if (instance)
@@ -586,6 +575,20 @@ void BossAI::UpdateAI(uint32 diff)
     DoMeleeAttackIfReady();
 }
 
+void BossAI::_DespawnAtEvade()
+{
+    uint32 corpseDelay = me->GetCorpseDelay();
+    uint32 respawnDelay = me->GetRespawnDelay();
+
+    me->SetCorpseDelay(1);
+    me->SetRespawnDelay(29);
+
+    me->DespawnOrUnsummon();
+
+    me->SetCorpseDelay(corpseDelay);
+    me->SetRespawnDelay(respawnDelay);
+}
+
 // WorldBossAI - for non-instanced bosses
 
 WorldBossAI::WorldBossAI(Creature* creature) :
@@ -662,4 +665,9 @@ void GetCreatureListWithEntryInGrid(std::list<Creature*>& list, WorldObject* sou
 void GetGameObjectListWithEntryInGrid(std::list<GameObject*>& list, WorldObject* source, uint32 entry, float maxSearchRange)
 {
     source->GetGameObjectListWithEntryInGrid(list, entry, maxSearchRange);
+}
+
+void GetPlayerListInGrid(std::list<Player*>& list, WorldObject* source, float maxSearchRange)
+{
+    source->GetPlayerListInGrid(list, maxSearchRange);
 }

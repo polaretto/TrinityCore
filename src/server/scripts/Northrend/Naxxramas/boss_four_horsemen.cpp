@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -106,7 +106,7 @@ public:
 
         void Initialize()
         {
-            uiEventStarterGUID = 0;
+            uiEventStarterGUID.Clear();
             nextWP = 0;
             punishTimer = 2000;
             nextMovementStarted = false;
@@ -118,7 +118,7 @@ public:
         }
 
         Horsemen id;
-        uint64 uiEventStarterGUID;
+        ObjectGuid uiEventStarterGUID;
         uint8 nextWP;
         uint32 punishTimer;
         bool caster;
@@ -143,10 +143,10 @@ public:
 
         bool DoEncounteraction(Unit* who, bool attack, bool reset, bool checkAllDead)
         {
-            Creature* Thane = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_THANE));
-            Creature* Lady = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_LADY));
-            Creature* Baron = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_BARON));
-            Creature* Sir = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_SIR));
+            Creature* Thane = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_THANE));
+            Creature* Lady = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_LADY));
+            Creature* Baron = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BARON));
+            Creature* Sir = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SIR));
 
             if (Thane && Lady && Baron && Sir)
             {
@@ -221,12 +221,12 @@ public:
             }
         }
 
-        void MovementInform(uint32 type, uint32 id) override
+        void MovementInform(uint32 type, uint32 point) override
         {
             if (type != POINT_MOTION_TYPE)
                 return;
 
-            if (id == 2 || id == 5 || id == 8 || id == 11)
+            if (point == 2 || point == 5 || point == 8 || point == 11)
             {
                 movementCompleted = true;
                 me->SetReactState(REACT_AGGRESSIVE);
@@ -251,7 +251,7 @@ public:
             }
 
             nextMovementStarted = false;
-            nextWP = id + 1;
+            nextWP = point + 1;
         }
 
         // switch to "who" if nearer than current target.

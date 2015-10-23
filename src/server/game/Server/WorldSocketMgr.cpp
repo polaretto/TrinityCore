@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2008  MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -21,6 +21,7 @@
 #include "ScriptMgr.h"
 #include "WorldSocket.h"
 #include "WorldSocketMgr.h"
+
 #include <boost/system/error_code.hpp>
 
 static void OnSocketAccept(tcp::socket&& sock)
@@ -42,15 +43,21 @@ public:
     }
 };
 
-WorldSocketMgr::WorldSocketMgr() : BaseSocketMgr(), _socketSendBufferSize(-1), m_SockOutUBuff(65536), _tcpNoDelay(true)
+WorldSocketMgr::WorldSocketMgr() : BaseSocketMgr(), _instanceAcceptor(nullptr), _socketSendBufferSize(-1), m_SockOutUBuff(65536), _tcpNoDelay(true)
 {
+}
+
+WorldSocketMgr::~WorldSocketMgr()
+{
+    delete _instanceAcceptor;
 }
 
 bool WorldSocketMgr::StartNetwork(boost::asio::io_service& service, std::string const& bindIp, uint16 port)
 {
     _tcpNoDelay = sConfigMgr->GetBoolDefault("Network.TcpNodelay", true);
 
-    TC_LOG_DEBUG("misc", "Max allowed socket connections %d", boost::asio::socket_base::max_connections);
+    int const max_connections = boost::asio::socket_base::max_connections;
+    TC_LOG_DEBUG("misc", "Max allowed socket connections %d", max_connections);
 
     // -1 means use default
     _socketSendBufferSize = sConfigMgr->GetIntDefault("Network.OutKBuff", -1);
@@ -64,8 +71,10 @@ bool WorldSocketMgr::StartNetwork(boost::asio::io_service& service, std::string 
     }
 
     BaseSocketMgr::StartNetwork(service, bindIp, port);
+    _instanceAcceptor = new AsyncAcceptor(service, bindIp, uint16(sWorld->getIntConfig(CONFIG_PORT_INSTANCE)));
 
     _acceptor->AsyncAcceptManaged(&OnSocketAccept);
+    _instanceAcceptor->AsyncAcceptManaged(&OnSocketAccept);
 
     sScriptMgr->OnNetworkStart();
     return true;

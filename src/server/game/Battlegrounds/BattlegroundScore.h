@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,6 +19,8 @@
 #define TRINITY_BATTLEGROUND_SCORE_H
 
 #include "WorldPacket.h"
+#include "Player.h"
+#include "ObjectAccessor.h"
 
 enum ScoreType
 {
@@ -29,7 +31,7 @@ enum ScoreType
     SCORE_DAMAGE_DONE           = 5,
     SCORE_HEALING_DONE          = 6,
 
-    // WS and EY
+    // WS, EY and TP
     SCORE_FLAG_CAPTURES         = 7,
     SCORE_FLAG_RETURNS          = 8,
 
@@ -55,8 +57,8 @@ struct BattlegroundScore
     friend class Battleground;
 
     protected:
-        BattlegroundScore(uint64 playerGuid) : PlayerGuid(playerGuid), KillingBlows(0), Deaths(0),
-            HonorableKills(0), BonusHonor(0), DamageDone(0), HealingDone(0) { }
+        BattlegroundScore(ObjectGuid playerGuid, uint32 team) : PlayerGuid(playerGuid), TeamId(team == ALLIANCE ? 1 : 0),
+            KillingBlows(0), Deaths(0), HonorableKills(0), BonusHonor(0), DamageDone(0), HealingDone(0) { }
 
         virtual ~BattlegroundScore() { }
 
@@ -88,21 +90,7 @@ struct BattlegroundScore
             }
         }
 
-        virtual void AppendToPacket(WorldPacket& data)
-        {
-            data << uint64(PlayerGuid);
-
-            data << uint32(KillingBlows);
-            data << uint32(HonorableKills);
-            data << uint32(Deaths);
-            data << uint32(BonusHonor);
-            data << uint32(DamageDone);
-            data << uint32(HealingDone);
-
-            BuildObjectivesBlock(data);
-        }
-
-        virtual void BuildObjectivesBlock(WorldPacket& /*data*/) = 0;
+        virtual void BuildObjectivesBlock(std::vector<int32>& /*stats*/) = 0;
 
         // For Logging purpose
         virtual std::string ToString() const { return ""; }
@@ -120,7 +108,8 @@ struct BattlegroundScore
         virtual uint32 GetAttr4() const { return 0; }
         virtual uint32 GetAttr5() const { return 0; }
 
-        uint64 PlayerGuid;
+        ObjectGuid PlayerGuid;
+        uint8 TeamId;
 
         // Default score, present in every type
         uint32 KillingBlows;

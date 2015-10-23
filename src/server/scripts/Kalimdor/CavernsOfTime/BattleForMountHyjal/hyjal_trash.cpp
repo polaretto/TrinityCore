@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -26,7 +26,6 @@ enum Spells
     SPELL_METEOR            = 33814, //infernal visual
     SPELL_IMMOLATION        = 37059,
     SPELL_FLAME_BUFFET      = 31724,
-    NPC_TRIGGER             = 21987, //World Trigger (Tiny)
     MODEL_INVIS             = 11686, //invisible model
     SPELL_DISEASE_CLOUD     = 31607,
     SPELL_KNOCKDOWN         = 31610,
@@ -402,7 +401,7 @@ void hyjal_trashAI::JustDied(Unit* /*killer*/)
         instance->SetData(DATA_TRASH, 0);//signal trash is dead
 
     if ((instance->GetData(DATA_RAIDDAMAGE) < MINRAIDDAMAGE && !me->isWorldBoss()) || (damageTaken < me->GetMaxHealth()/4 && me->isWorldBoss()))
-        me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);//no loot
+        me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);//no loot
 }
 
 class npc_giant_infernal : public CreatureScript
@@ -447,7 +446,7 @@ public:
             {
                 if (instance->GetData(DATA_ALLIANCE_RETREAT))//2.alliance boss down, attack thrall
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
@@ -465,10 +464,7 @@ public:
             }
             if (!meteor)
             {
-                float x, y, z;
-                me->GetPosition(x, y, z);
-                Creature* trigger = me->SummonCreature(NPC_TRIGGER, x + 8, y + 8, z + 25 + rand32() % 10, me->GetOrientation(), TEMPSUMMON_TIMED_DESPAWN, 1000);
-                if (trigger)
+                if (Creature* trigger = me->SummonCreature(NPC_WORLD_TRIGGER_TINY, me->GetPositionWithOffset({ 8.0f, 8.0f, frand(25.0f, 35.0f), 0.0f }), TEMPSUMMON_TIMED_DESPAWN, 1000))
                 {
                     trigger->SetVisible(false);
                     trigger->setFaction(me->getFaction());
@@ -486,7 +482,7 @@ public:
                     CanMove = true;
                     if (instance->GetData(DATA_ALLIANCE_RETREAT) && !instance->GetData(DATA_HORDE_RETREAT))
                     {
-                        Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                        Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                         if (target && target->IsAlive())
                             me->AddThreat(target, 0.0f);
                     } else if (instance->GetData(DATA_ALLIANCE_RETREAT) && instance->GetData(DATA_HORDE_RETREAT)){
@@ -563,13 +559,13 @@ public:
             {
                 if (instance->GetData(DATA_ALLIANCE_RETREAT))//2.alliance boss down, attack thrall
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
                 else
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_JAINAPROUDMOORE));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
@@ -662,13 +658,13 @@ public:
             {
                 if (instance->GetData(DATA_ALLIANCE_RETREAT))//2.alliance boss down, attack thrall
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
                 else
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_JAINAPROUDMOORE));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
@@ -773,13 +769,13 @@ public:
             {
                 if (instance->GetData(DATA_ALLIANCE_RETREAT))//2.alliance boss down, attack thrall
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
                 else
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_JAINAPROUDMOORE));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
@@ -886,13 +882,13 @@ public:
             {
                 if (instance->GetData(DATA_ALLIANCE_RETREAT))//2.alliance boss down, attack thrall
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
                 else
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_JAINAPROUDMOORE));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
@@ -982,13 +978,13 @@ public:
             {
                 if (instance->GetData(DATA_ALLIANCE_RETREAT))//2.alliance boss down, attack thrall
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
                 else
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_JAINAPROUDMOORE));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
@@ -1068,13 +1064,13 @@ public:
             {
                 if (instance->GetData(DATA_ALLIANCE_RETREAT))//2.alliance boss down, attack thrall
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
                 else
                 {
-                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_JAINAPROUDMOORE));
+                    Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_JAINAPROUDMOORE));
                     if (target && target->IsAlive())
                         me->AddThreat(target, 0.0f);
                 }
@@ -1160,7 +1156,7 @@ public:
         {
             if (waypointId == 2 && !IsOverrun)
             {
-                Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                 if (target && target->IsAlive())
                 {
                     me->AddThreat(target, 0.0f);
@@ -1281,7 +1277,7 @@ public:
         {
             if (waypointId == 2 && !IsOverrun)
             {
-                Unit* target = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_THRALL));
+                Unit* target = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_THRALL));
                 if (target && target->IsAlive())
                 {
                     me->AddThreat(target, 0.0f);

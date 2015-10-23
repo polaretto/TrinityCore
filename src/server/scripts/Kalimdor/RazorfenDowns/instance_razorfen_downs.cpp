@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -55,17 +55,12 @@ public:
         {
             SetHeaders(DataHeader);
             SetBossNumber(EncounterCount);
-        }
-
-        void Initialize() override
-        {
-            goGongGUID      = 0;
-            gongWave        = 0;
-            fiendsKilled    = 0;
-            reaversKilled   = 0;
-            summonLowRange  = 0;
+            gongWave = 0;
+            fiendsKilled = 0;
+            reaversKilled = 0;
+            summonLowRange = 0;
             summonHighRange = 0;
-            summonCreature  = 0;
+            summonCreature = 0;
         }
 
         void OnGameObjectCreate(GameObject* gameObject) override
@@ -172,7 +167,7 @@ public:
         }
 
     protected:
-        uint64 goGongGUID;
+        ObjectGuid goGongGUID;
         uint16 gongWave;
         uint8  fiendsKilled;
         uint8  reaversKilled;

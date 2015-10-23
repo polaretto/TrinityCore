@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -25,10 +25,10 @@
 #include "Player.h"
 #include "World.h"
 #include "Log.h"
-#include "ObjectMgr.h"
 #include "Util.h"
 #include "ScriptMgr.h"
 #include "WorldSession.h"
+#include "MiscPackets.h"
 
 /// Create the Weather object
 Weather::Weather(uint32 zone, WeatherData const* weatherChances)
@@ -95,7 +95,7 @@ bool Weather::ReGenerate()
     time_t gtime = sWorld->GetGameTime();
     struct tm ltime;
     localtime_r(&gtime, &ltime);
-    uint32 season = ((ltime.tm_yday - 78 + 365)/91)%4;
+    uint32 season = ((ltime.tm_yday - 78 + 365) / 91) % 4;
 
     static char const* seasonName[WEATHER_SEASONS] = { "spring", "summer", "fall", "winter" };
 
@@ -150,8 +150,8 @@ bool Weather::ReGenerate()
 
     // At this point, only weather that isn't doing anything remains but that have weather data
     uint32 chance1 = m_weatherChances->data[season].rainChance;
-    uint32 chance2 = chance1+ m_weatherChances->data[season].snowChance;
-    uint32 chance3 = chance2+ m_weatherChances->data[season].stormChance;
+    uint32 chance2 = chance1 + m_weatherChances->data[season].snowChance;
+    uint32 chance3 = chance2 + m_weatherChances->data[season].stormChance;
 
     uint32 rnd = urand(0, 99);
     if (rnd <= chance1)
@@ -193,9 +193,8 @@ bool Weather::ReGenerate()
 
 void Weather::SendWeatherUpdateToPlayer(Player* player)
 {
-    WorldPacket data(SMSG_WEATHER, (4+4+4));
-    data << uint32(GetWeatherState()) << (float)m_grade << uint8(0);
-    player->GetSession()->SendPacket(&data);
+    WorldPackets::Misc::Weather weather(GetWeatherState(), m_grade);
+    player->GetSession()->SendPacket(weather.Write());
 }
 
 /// Send the new weather to all players in the zone
@@ -209,13 +208,10 @@ bool Weather::UpdateWeather()
 
     WeatherState state = GetWeatherState();
 
-    WorldPacket data(SMSG_WEATHER, (4+4+4));
-    data << uint32(state);
-    data << (float)m_grade;
-    data << uint8(0);
+    WorldPackets::Misc::Weather weather(state, m_grade);
 
     //- Returns false if there were no players found to update
-    if (!sWorld->SendZoneMessage(m_zone, &data))
+    if (!sWorld->SendZoneMessage(m_zone, weather.Write()))
         return false;
 
     ///- Log the event
@@ -318,4 +314,3 @@ WeatherState Weather::GetWeatherState() const
             return WEATHER_STATE_FINE;
     }
 }
-

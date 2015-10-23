@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2010 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
 #include "World.h"
 #include "Database/DatabaseEnv.h"
 #include "SpellMgr.h"
+#include "SpellInfo.h"
 #include "DBCStores.h"
 
 void CharacterDatabaseCleaner::CleanDatabase()
@@ -128,7 +129,8 @@ void CharacterDatabaseCleaner::CleanCharacterSkills()
 
 bool CharacterDatabaseCleaner::SpellCheck(uint32 spell_id)
 {
-    return sSpellMgr->GetSpellInfo(spell_id) && !GetTalentSpellPos(spell_id);
+    SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell_id);
+    return spellInfo && !spellInfo->HasAttribute(SPELL_ATTR0_CU_IS_TALENT);
 }
 
 void CharacterDatabaseCleaner::CleanCharacterSpell()
@@ -142,12 +144,12 @@ bool CharacterDatabaseCleaner::TalentCheck(uint32 talent_id)
     if (!talentInfo)
         return false;
 
-    return sTalentTabStore.LookupEntry(talentInfo->TalentTab) != nullptr;
+    return sChrSpecializationStore.LookupEntry(talentInfo->SpecID) != nullptr;
 }
 
 void CharacterDatabaseCleaner::CleanCharacterTalent()
 {
-    CharacterDatabase.DirectPExecute("DELETE FROM character_talent WHERE spec > %u", MAX_TALENT_SPECS);
+    CharacterDatabase.DirectPExecute("DELETE FROM character_talent WHERE spec > %u", MAX_TALENT_GROUPS);
     CheckUnique("spell", "character_talent", &TalentCheck);
 }
 

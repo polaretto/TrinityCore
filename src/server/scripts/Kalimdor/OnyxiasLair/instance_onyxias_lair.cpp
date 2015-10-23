@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -43,24 +43,21 @@ public:
 
     struct instance_onyxias_lair_InstanceMapScript : public InstanceScript
     {
-        instance_onyxias_lair_InstanceMapScript(Map* map) : InstanceScript(map) { }
-
-        //Eruption is a BFS graph problem
-        //One map to remember all floor, one map to keep floor that still need to erupt and one queue to know what needs to be removed
-
-        void Initialize() override
+        instance_onyxias_lair_InstanceMapScript(Map* map) : InstanceScript(map)
         {
             SetHeaders(DataHeader);
             SetBossNumber(EncounterCount);
 
-            onyxiaGUID               = 0;
-            onyxiaLiftoffTimer       = 0;
-            manyWhelpsCounter        = 0;
-            eruptTimer               = 0;
+            onyxiaLiftoffTimer = 0;
+            manyWhelpsCounter = 0;
+            eruptTimer = 0;
 
             achievManyWhelpsHandleIt = false;
-            achievSheDeepBreathMore  = true;
+            achievSheDeepBreathMore = true;
         }
+
+        //Eruption is a BFS graph problem
+        //One map to remember all floor, one map to keep floor that still need to erupt and one queue to know what needs to be removed
 
         void OnCreatureCreate(Creature* creature) override
         {
@@ -74,7 +71,7 @@ public:
 
         void OnGameObjectCreate(GameObject* go) override
         {
-            if ((go->GetGOInfo()->displayId == 4392 || go->GetGOInfo()->displayId == 4472) && go->GetGOInfo()->trap.spellId == 17731)
+            if ((go->GetGOInfo()->displayId == 4392 || go->GetGOInfo()->displayId == 4472) && go->GetGOInfo()->trap.spell == 17731)
             {
                 FloorEruptionGUID[0].insert(std::make_pair(go->GetGUID(), 0));
                 return;
@@ -95,21 +92,21 @@ public:
 
         void OnGameObjectRemove(GameObject* go) override
         {
-            if ((go->GetGOInfo()->displayId == 4392 || go->GetGOInfo()->displayId == 4472) && go->GetGOInfo()->trap.spellId == 17731)
+            if ((go->GetGOInfo()->displayId == 4392 || go->GetGOInfo()->displayId == 4472) && go->GetGOInfo()->trap.spell == 17731)
             {
                 FloorEruptionGUID[0].erase(go->GetGUID());
                 return;
             }
         }
 
-        void FloorEruption(uint64 floorEruptedGUID)
+        void FloorEruption(ObjectGuid floorEruptedGUID)
         {
             if (GameObject* floorEruption = instance->GetGameObject(floorEruptedGUID))
             {
                 //THIS GOB IS A TRAP - What shall i do? =(
                 //Cast it spell? Copyed Heigan method
                 floorEruption->SendCustomAnim(floorEruption->GetGoAnimProgress());
-                floorEruption->CastSpell(NULL, Difficulty(instance->GetSpawnMode()) == RAID_DIFFICULTY_10MAN_NORMAL ? 17731 : 69294); //pFloorEruption->GetGOInfo()->trap.spellId
+                floorEruption->CastSpell(NULL, Difficulty(instance->GetSpawnMode()) == DIFFICULTY_10_N ? 17731 : 69294); //pFloorEruption->GetGOInfo()->trap.spellId
 
                 //Get all immediatly nearby floors
                 std::list<GameObject*> nearFloorList;
@@ -119,9 +116,9 @@ public:
                 //remove all that are not present on FloorEruptionGUID[1] and update treeLen on each GUID
                 for (std::list<GameObject*>::const_iterator itr = nearFloorList.begin(); itr != nearFloorList.end(); ++itr)
                 {
-                    if (((*itr)->GetGOInfo()->displayId == 4392 || (*itr)->GetGOInfo()->displayId == 4472) && (*itr)->GetGOInfo()->trap.spellId == 17731)
+                    if (((*itr)->GetGOInfo()->displayId == 4392 || (*itr)->GetGOInfo()->displayId == 4472) && (*itr)->GetGOInfo()->trap.spell == 17731)
                     {
-                        uint64 nearFloorGUID = (*itr)->GetGUID();
+                        ObjectGuid nearFloorGUID = (*itr)->GetGUID();
                         if (FloorEruptionGUID[1].find(nearFloorGUID) != FloorEruptionGUID[1].end() && (*FloorEruptionGUID[1].find(nearFloorGUID)).second == 0)
                         {
                             (*FloorEruptionGUID[1].find(nearFloorGUID)).second = (*FloorEruptionGUID[1].find(floorEruptedGUID)).second+1;
@@ -173,7 +170,7 @@ public:
             }
         }
 
-        void SetData64(uint32 type, uint64 data) override
+        void SetGuidData(uint32 type, ObjectGuid data) override
         {
             switch (type)
             {
@@ -185,7 +182,7 @@ public:
             }
         }
 
-        uint64 GetData64(uint32 data) const override
+        ObjectGuid GetGuidData(uint32 data) const override
         {
             switch (data)
             {
@@ -193,7 +190,7 @@ public:
                     return onyxiaGUID;
             }
 
-            return 0;
+            return ObjectGuid::Empty;
         }
 
         void Update(uint32 diff) override
@@ -212,8 +209,8 @@ public:
             {
                 if (eruptTimer <= diff)
                 {
-                    uint64 frontGuid = FloorEruptionGUIDQueue.front();
-                    std::map<uint64, uint32>::iterator itr = FloorEruptionGUID[1].find(frontGuid);
+                    ObjectGuid frontGuid = FloorEruptionGUIDQueue.front();
+                    std::map<ObjectGuid, uint32>::iterator itr = FloorEruptionGUID[1].find(frontGuid);
                     if (itr != FloorEruptionGUID[1].end())
                     {
                         uint32 treeHeight = itr->second;
@@ -252,11 +249,9 @@ public:
         }
 
     protected:
-        std::map<uint64, uint32> FloorEruptionGUID[2];
-        std::queue<uint64> FloorEruptionGUIDQueue;
-        uint64 onyxiaGUID;
-        uint64 triggerGUID;
-        uint64 tankGUID;
+        std::map<ObjectGuid, uint32> FloorEruptionGUID[2];
+        std::queue<ObjectGuid> FloorEruptionGUIDQueue;
+        ObjectGuid onyxiaGUID;
         uint32 onyxiaLiftoffTimer;
         uint32 manyWhelpsCounter;
         uint32 eruptTimer;

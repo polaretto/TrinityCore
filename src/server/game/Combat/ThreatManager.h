@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -23,6 +23,7 @@
 #include "SharedDefines.h"
 #include "LinkedReference/Reference.h"
 #include "UnitEvents.h"
+#include "ObjectGuid.h"
 
 #include <list>
 
@@ -103,7 +104,7 @@ class HostileReference : public Reference<Unit, ThreatManager>
 
         //=================================================
 
-        uint64 getUnitGuid() const { return iUnitGuid; }
+        ObjectGuid getUnitGuid() const { return iUnitGuid; }
 
         //=================================================
         // reference is not needed anymore. realy delete it !
@@ -132,7 +133,7 @@ class HostileReference : public Reference<Unit, ThreatManager>
     private:
         float iThreat;
         float iTempThreatModifier;                          // used for taunt
-        uint64 iUnitGuid;
+        ObjectGuid iUnitGuid;
         bool iOnline;
         bool iAccessible;
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2011 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -26,7 +26,7 @@
 #include <fstream>
 #undef min
 #undef max
-#include "mpq_libmpq04.h"
+#include "mpqfile.h"
 
 using namespace std;
 extern uint16 *LiqType;
@@ -39,9 +39,11 @@ WMORoot::WMORoot(std::string &filename)
     memset(bbcorn2, 0, sizeof(bbcorn2));
 }
 
+extern HANDLE CascStorage;
+
 bool WMORoot::open()
 {
-    MPQFile f(filename.c_str());
+    MPQFile f(CascStorage, filename.c_str());
     if(f.isEof ())
     {
         printf("No such file.\n");
@@ -149,7 +151,7 @@ WMOGroup::WMOGroup(const std::string &filename) :
 
 bool WMOGroup::open()
 {
-    MPQFile f(filename.c_str());
+    MPQFile f(CascStorage, filename.c_str());
     if(f.isEof ())
     {
         printf("No such file.\n");

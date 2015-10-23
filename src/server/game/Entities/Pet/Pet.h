@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -55,12 +55,12 @@ class Pet : public Guardian
 
         bool IsPermanentPetFor(Player* owner) const;        // pet have tab in character windows and set UNIT_FIELD_PETNUMBER
 
-        bool Create(uint32 guidlow, Map* map, uint32 phaseMask, uint32 Entry, uint32 pet_number);
+        bool Create(ObjectGuid::LowType guidlow, Map* map, uint32 Entry);
         bool CreateBaseAtCreature(Creature* creature);
         bool CreateBaseAtCreatureInfo(CreatureTemplate const* cinfo, Unit* owner);
-        bool CreateBaseAtTamed(CreatureTemplate const* cinfo, Map* map, uint32 phaseMask);
+        bool CreateBaseAtTamed(CreatureTemplate const* cinfo, Map* map);
         bool LoadPetFromDB(Player* owner, uint32 petentry = 0, uint32 petnumber = 0, bool current = false);
-        bool isBeingLoaded() const override { return m_loading;}
+        bool IsLoading() const override { return m_loading;}
         void SavePetToDB(PetSaveMode mode);
         void Remove(PetSaveMode mode, bool returnreagent = false);
         static void DeleteFromDB(uint32 guidlow);
@@ -68,7 +68,7 @@ class Pet : public Guardian
         void setDeathState(DeathState s) override;                   // overwrite virtual Creature::setDeathState and Unit::setDeathState
         void Update(uint32 diff) override;                           // overwrite virtual Creature::Update and Unit::Update
 
-        uint8 GetPetAutoSpellSize() const override { return m_autospells.size(); }
+        uint8 GetPetAutoSpellSize() const override { return uint8(m_autospells.size()); }
         uint32 GetPetAutoSpellOnPos(uint8 pos) const override
         {
             if (pos >= m_autospells.size())
@@ -77,8 +77,6 @@ class Pet : public Guardian
                 return m_autospells[pos];
         }
 
-        void LoseHappiness();
-        HappinessState GetHappinessState();
         void GivePetXP(uint32 xp);
         void GivePetLevel(uint8 level);
         void SynchronizeLevelWithOwner();
@@ -108,7 +106,6 @@ class Pet : public Guardian
         bool IsPetAura(Aura const* aura);
 
         void _LoadSpellCooldowns();
-        void _SaveSpellCooldowns(SQLTransaction& trans);
         void _LoadAuras(uint32 timediff);
         void _SaveAuras(SQLTransaction& trans);
         void _LoadSpells();
@@ -121,7 +118,6 @@ class Pet : public Guardian
         bool unlearnSpell(uint32 spell_id, bool learn_prev, bool clear_ab = true);
         bool removeSpell(uint32 spell_id, bool learn_prev, bool clear_ab = true);
         void CleanupActionBar();
-        virtual void ProhibitSpellSchool(SpellSchoolMask idSchoolMask, uint32 unTimeMs) override;
 
         PetSpellMap     m_spells;
         AutoSpellList   m_autospells;
@@ -132,15 +128,15 @@ class Pet : public Guardian
         static void resetTalentsForAllPetsOf(Player* owner, Pet* online_pet = nullptr);
         void InitTalentForLevel();
 
-        uint8 GetMaxTalentPointsForLevel(uint8 level);
-        uint8 GetFreeTalentPoints() { return GetByteValue(UNIT_FIELD_BYTES_1, 1); }
+        uint8 GetMaxTalentPointsForLevel(uint8 level) const;
+        uint8 GetFreeTalentPoints() const { return GetByteValue(UNIT_FIELD_BYTES_1, 1); }
         void SetFreeTalentPoints(uint8 points) { SetByteValue(UNIT_FIELD_BYTES_1, 1, points); }
 
         uint32  m_usedTalentCount;
 
-        uint64 GetAuraUpdateMaskForRaid() const { return m_auraRaidUpdateMask; }
-        void SetAuraUpdateMaskForRaid(uint8 slot) { m_auraRaidUpdateMask |= (uint64(1) << slot); }
-        void ResetAuraUpdateMaskForRaid() { m_auraRaidUpdateMask = 0; }
+        uint32 GetGroupUpdateFlag() const { return m_groupUpdateMask; }
+        void SetGroupUpdateFlag(uint32 flag);
+        void ResetGroupUpdateFlag();
 
         DeclinedName const* GetDeclinedNames() const { return m_declinedname; }
 
@@ -149,23 +145,22 @@ class Pet : public Guardian
         Player* GetOwner() const;
 
     protected:
-        uint32  m_happinessTimer;
         PetType m_petType;
         int32   m_duration;                                 // time until unsummon (used mostly for summoned guardians and not used for controlled pets)
-        uint64  m_auraRaidUpdateMask;
         bool    m_loading;
         uint32  m_regenTimer;
+        uint32  m_groupUpdateMask;
 
         DeclinedName *m_declinedname;
 
     private:
-        void SaveToDB(uint32, uint8, uint32) override                // override of Creature::SaveToDB     - must not be called
+        void SaveToDB(uint32, uint32, uint32) override               // override of Creature::SaveToDB     - must not be called
         {
-            ASSERT(false);
+            ABORT();
         }
         void DeleteFromDB() override                                 // override of Creature::DeleteFromDB - must not be called
         {
-            ASSERT(false);
+            ABORT();
         }
 };
 #endif

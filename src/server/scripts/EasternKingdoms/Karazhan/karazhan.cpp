@@ -1,5 +1,5 @@
  /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@ EndScriptData */
 
 /* ContentData
 npc_barnes
-npc_berthold
 npc_image_of_medivh
 EndContentData */
 
@@ -139,7 +138,7 @@ public:
 
         void Initialize()
         {
-            m_uiSpotlightGUID = 0;
+            m_uiSpotlightGUID.Clear();
 
             TalkCount = 0;
             TalkTimer = 2000;
@@ -150,7 +149,7 @@ public:
 
         InstanceScript* instance;
 
-        uint64 m_uiSpotlightGUID;
+        ObjectGuid m_uiSpotlightGUID;
 
         uint32 TalkCount;
         uint32 TalkTimer;
@@ -186,7 +185,7 @@ public:
             {
                 case 0:
                     DoCast(me, SPELL_TUXEDO, false);
-                    instance->DoUseDoorOrButton(instance->GetData64(DATA_GO_STAGEDOORLEFT));
+                    instance->DoUseDoorOrButton(instance->GetGuidData(DATA_GO_STAGEDOORLEFT));
                     break;
                 case 4:
                     TalkCount = 0;
@@ -202,12 +201,12 @@ public:
                     }
                     break;
                 case 8:
-                    instance->DoUseDoorOrButton(instance->GetData64(DATA_GO_STAGEDOORLEFT));
+                    instance->DoUseDoorOrButton(instance->GetGuidData(DATA_GO_STAGEDOORLEFT));
                     PerformanceReady = true;
                     break;
                 case 9:
                     PrepareEncounter();
-                    instance->DoUseDoorOrButton(instance->GetData64(DATA_GO_CURTAINS));
+                    instance->DoUseDoorOrButton(instance->GetGuidData(DATA_GO_CURTAINS));
                     break;
             }
         }
@@ -310,11 +309,7 @@ public:
                 {
                     if (WipeTimer <= diff)
                     {
-                        Map* map = me->GetMap();
-                        if (!map->IsDungeon())
-                            return;
-
-                        Map::PlayerList const &PlayerList = map->GetPlayers();
+                        Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
                         if (PlayerList.isEmpty())
                             return;
 
@@ -360,17 +355,17 @@ public:
             case GOSSIP_ACTION_INFO_DEF+3:
                 player->CLOSE_GOSSIP_MENU();
                 pBarnesAI->m_uiEventId = EVENT_OZ;
-                TC_LOG_INFO("scripts", "player (GUID " UI64FMTD ") manually set Opera event to EVENT_OZ", player->GetGUID());
+                TC_LOG_DEBUG("scripts", "player (%s) manually set Opera event to EVENT_OZ", player->GetGUID().ToString().c_str());
                 break;
             case GOSSIP_ACTION_INFO_DEF+4:
                 player->CLOSE_GOSSIP_MENU();
                 pBarnesAI->m_uiEventId = EVENT_HOOD;
-                TC_LOG_INFO("scripts", "player (GUID " UI64FMTD ") manually set Opera event to EVENT_HOOD", player->GetGUID());
+                TC_LOG_DEBUG("scripts", "player (%s) manually set Opera event to EVENT_HOOD", player->GetGUID().ToString().c_str());
                 break;
             case GOSSIP_ACTION_INFO_DEF+5:
                 player->CLOSE_GOSSIP_MENU();
                 pBarnesAI->m_uiEventId = EVENT_RAJ;
-                TC_LOG_INFO("scripts", "player (GUID " UI64FMTD ") manually set Opera event to EVENT_RAJ", player->GetGUID());
+                TC_LOG_DEBUG("scripts", "player (%s) manually set Opera event to EVENT_RAJ", player->GetGUID().ToString().c_str());
                 break;
         }
 
@@ -416,41 +411,6 @@ public:
 };
 
 /*###
-# npc_berthold
-####*/
-
-#define GOSSIP_ITEM_TELEPORT    "Teleport me to the Guardian's Library"
-
-class npc_berthold : public CreatureScript
-{
-public:
-    npc_berthold() : CreatureScript("npc_berthold") { }
-
-    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
-    {
-        player->PlayerTalkClass->ClearMenus();
-        if (action == GOSSIP_ACTION_INFO_DEF + 1)
-            player->CastSpell(player, SPELL_TELEPORT, true);
-
-        player->CLOSE_GOSSIP_MENU();
-        return true;
-    }
-
-    bool OnGossipHello(Player* player, Creature* creature) override
-    {
-        if (InstanceScript* instance = creature->GetInstanceScript())
-        {
-            // Check if Shade of Aran event is done
-            if (instance->GetData(TYPE_ARAN) == DONE)
-                player->ADD_GOSSIP_ITEM(GOSSIP_ICON_CHAT, GOSSIP_ITEM_TELEPORT, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
-        }
-
-        player->SEND_GOSSIP_MENU(player->GetGossipTextId(creature), creature->GetGUID());
-        return true;
-    }
-};
-
-/*###
 # npc_image_of_medivh
 ####*/
 
@@ -491,14 +451,14 @@ public:
 
         void Initialize()
         {
-            ArcanagosGUID = 0;
+            ArcanagosGUID.Clear();
             EventStarted = false;
             YellTimer = 0;
         }
 
         InstanceScript* instance;
 
-        uint64 ArcanagosGUID;
+        ObjectGuid ArcanagosGUID;
 
         uint32 YellTimer;
         uint32 Step;
@@ -511,9 +471,9 @@ public:
         {
             Initialize();
 
-            if (instance->GetData64(DATA_IMAGE_OF_MEDIVH) == 0)
+            if (instance->GetGuidData(DATA_IMAGE_OF_MEDIVH).IsEmpty())
             {
-                instance->SetData64(DATA_IMAGE_OF_MEDIVH, me->GetGUID());
+                instance->SetGuidData(DATA_IMAGE_OF_MEDIVH, me->GetGUID());
                 (*me).GetMotionMaster()->MovePoint(1, MedivPos[0], MedivPos[1], MedivPos[2]);
                 Step = 0;
             }
@@ -552,32 +512,30 @@ public:
             YellTimer = 10000;
         }
 
-        uint32 NextStep(uint32 Step)
+        uint32 NextStep(uint32 step)
         {
-            Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID);
-            Map* map = me->GetMap();
-            switch (Step)
+            switch (step)
             {
             case 0: return 9999999;
             case 1:
                 me->Yell(SAY_DIALOG_MEDIVH_1, LANG_UNIVERSAL);
                 return 10000;
             case 2:
-                if (arca)
+                if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
                     arca->Yell(SAY_DIALOG_ARCANAGOS_2, LANG_UNIVERSAL);
                 return 20000;
             case 3:
                 me->Yell(SAY_DIALOG_MEDIVH_3, LANG_UNIVERSAL);
                 return 10000;
             case 4:
-                if (arca)
+                if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
                     arca->Yell(SAY_DIALOG_ARCANAGOS_4, LANG_UNIVERSAL);
                 return 20000;
             case 5:
                 me->Yell(SAY_DIALOG_MEDIVH_5, LANG_UNIVERSAL);
                 return 20000;
             case 6:
-                if (arca)
+                if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
                     arca->Yell(SAY_DIALOG_ARCANAGOS_6, LANG_UNIVERSAL);
                 return 10000;
             case 7:
@@ -591,15 +549,15 @@ public:
                 me->TextEmote(EMOTE_DIALOG_MEDIVH_7);
                 return 10000;
             case 10:
-                if (arca)
+                if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
                     DoCast(arca, SPELL_CONFLAGRATION_BLAST, false);
                 return 1000;
             case 11:
-                if (arca)
+                if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
                     arca->Yell(SAY_DIALOG_ARCANAGOS_8, LANG_UNIVERSAL);
                 return 5000;
             case 12:
-                if (arca)
+                if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
                 {
                     arca->GetMotionMaster()->MovePoint(0, -11010.82f, -1761.18f, 156.47f);
                     arca->setActive(true);
@@ -611,27 +569,27 @@ public:
                 me->Yell(SAY_DIALOG_MEDIVH_9, LANG_UNIVERSAL);
                 return 10000;
             case 14:
+            {
                 me->SetVisible(false);
                 me->ClearInCombat();
 
-                if (map->IsDungeon())
+                InstanceMap::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
+                for (InstanceMap::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                 {
-                    InstanceMap::PlayerList const &PlayerList = map->GetPlayers();
-                    for (InstanceMap::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
+                    if (i->GetSource()->IsAlive())
                     {
-                        if (i->GetSource()->IsAlive())
-                        {
-                            if (i->GetSource()->GetQuestStatus(9645) == QUEST_STATUS_INCOMPLETE)
-                                i->GetSource()->CompleteQuest(9645);
-                        }
+                        if (i->GetSource()->GetQuestStatus(9645) == QUEST_STATUS_INCOMPLETE)
+                            i->GetSource()->CompleteQuest(9645);
                     }
                 }
                 return 50000;
+            }
             case 15:
-                if (arca)
+                if (Creature* arca = ObjectAccessor::GetCreature(*me, ArcanagosGUID))
                     arca->DealDamage(arca, arca->GetHealth(), NULL, DIRECT_DAMAGE, SPELL_SCHOOL_MASK_NORMAL, NULL, false);
                 return 5000;
-            default : return 9999999;
+            default:
+                return 9999999;
             }
         }
 
@@ -668,6 +626,5 @@ public:
 void AddSC_karazhan()
 {
     new npc_barnes();
-    new npc_berthold();
     new npc_image_of_medivh();
 }

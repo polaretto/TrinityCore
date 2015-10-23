@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -186,7 +186,6 @@ public:
                     _Reset();
 
                 me->SetVisible(true);
-                me->SetPhaseMask(1, true);
                 me->SetUInt32Value(UNIT_NPC_FLAGS, 1);
                 me->setFaction(35);
                 me->SetStandState(UNIT_STAND_STATE_SIT_HIGH_CHAIR);
@@ -270,7 +269,7 @@ public:
                         case EVENT_SUCCESS_1:
                             if (Unit* player = me->SelectNearestPlayer(60.0f))
                             {
-                                me->SetInFront(player);
+                                me->SetFacingToObject(player);
                                 Talk(SAY_SUCCESS);
                                 if (GameObject* portcullis1 = me->FindNearestGameObject(GO_PORTCULLIS_ACTIVE, 65.0f))
                                     portcullis1->SetGoState(GO_STATE_ACTIVE);
@@ -367,9 +366,9 @@ public:
             }
         }
 
-        void sGossipSelect(Player* player, uint32 sender, uint32 action) override
+        void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId) override
         {
-            if (sender == GOSSIP_ID && action == GOSSIP_OPTION_ID)
+            if (menuId == GOSSIP_ID && gossipListId == GOSSIP_OPTION_ID)
             {
                 player->CLOSE_GOSSIP_MENU();
                 Talk(SAY_GAMESBEGIN_1);

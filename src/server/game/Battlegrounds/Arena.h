@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -42,15 +42,15 @@ class Arena : public Battleground
         Arena();
 
         void AddPlayer(Player* player) override;
-        void RemovePlayer(Player* /*player*/, uint64 /*guid*/, uint32 /*team*/) override;
+        void RemovePlayer(Player* /*player*/, ObjectGuid /*guid*/, uint32 /*team*/) override;
 
-        void FillInitialWorldStates(WorldPacket& data) override;
+        void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
         void UpdateArenaWorldState();
 
         void HandleKillPlayer(Player* player, Player* killer) override;
 
     private:
-        void RemovePlayerAtLeave(uint64 guid, bool transport, bool sendPacket) override;
+        void RemovePlayerAtLeave(ObjectGuid guid, bool transport, bool sendPacket) override;
         void CheckWinConditions() override;
         void EndBattleground(uint32 winner) override;
 };

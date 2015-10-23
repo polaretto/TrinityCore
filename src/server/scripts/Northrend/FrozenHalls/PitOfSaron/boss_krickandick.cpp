@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -137,9 +137,8 @@ class boss_ick : public CreatureScript
 
         struct boss_ickAI : public BossAI
         {
-            boss_ickAI(Creature* creature) : BossAI(creature, DATA_ICK), _vehicle(creature->GetVehicleKit())
+            boss_ickAI(Creature* creature) : BossAI(creature, DATA_ICK)
             {
-                ASSERT(_vehicle);
                 _tempThreat = 0;
             }
 
@@ -151,7 +150,7 @@ class boss_ick : public CreatureScript
 
             Creature* GetKrick()
             {
-                return ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_KRICK));
+                return ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_KRICK));
             }
 
             void EnterCombat(Unit* /*who*/) override
@@ -177,7 +176,8 @@ class boss_ick : public CreatureScript
             {
                 if (Creature* krick = GetKrick())
                 {
-                    _vehicle->RemoveAllPassengers();
+                    if (Vehicle* _vehicle = me->GetVehicleKit())
+                        _vehicle->RemoveAllPassengers();
                     if (krick->AI())
                         krick->AI()->DoAction(ACTION_OUTRO);
                 }
@@ -268,7 +268,6 @@ class boss_ick : public CreatureScript
             }
 
         private:
-            Vehicle* _vehicle;
             float _tempThreat;
         };
 
@@ -293,8 +292,8 @@ class boss_krick : public CreatureScript
             void Initialize()
             {
                 _phase = PHASE_COMBAT;
-                _outroNpcGUID = 0;
-                _tyrannusGUID = 0;
+                _outroNpcGUID.Clear();
+                _tyrannusGUID.Clear();
             }
 
             void Reset() override
@@ -308,7 +307,7 @@ class boss_krick : public CreatureScript
 
             Creature* GetIck()
             {
-                return ObjectAccessor::GetCreature(*me, _instanceScript->GetData64(DATA_ICK));
+                return ObjectAccessor::GetCreature(*me, _instanceScript->GetGuidData(DATA_ICK));
             }
 
             void KilledUnit(Unit* victim) override
@@ -333,7 +332,7 @@ class boss_krick : public CreatureScript
             {
                 if (actionId == ACTION_OUTRO)
                 {
-                    Creature* tyrannusPtr = ObjectAccessor::GetCreature(*me, _instanceScript->GetData64(DATA_TYRANNUS_EVENT));
+                    Creature* tyrannusPtr = ObjectAccessor::GetCreature(*me, _instanceScript->GetGuidData(DATA_TYRANNUS_EVENT));
                     if (tyrannusPtr)
                         tyrannusPtr->NearTeleportTo(outroPos[1].GetPositionX(), outroPos[1].GetPositionY(), outroPos[1].GetPositionZ(), outroPos[1].GetOrientation());
                     else
@@ -369,7 +368,7 @@ class boss_krick : public CreatureScript
                     {
                         case EVENT_OUTRO_1:
                         {
-                            if (Creature* temp = ObjectAccessor::GetCreature(*me, _instanceScript->GetData64(DATA_JAINA_SYLVANAS_1)))
+                            if (Creature* temp = ObjectAccessor::GetCreature(*me, _instanceScript->GetGuidData(DATA_JAINA_SYLVANAS_1)))
                                 temp->DespawnOrUnsummon();
 
                             Creature* jainaOrSylvanas = NULL;
@@ -417,7 +416,7 @@ class boss_krick : public CreatureScript
                             _events.ScheduleEvent(EVENT_OUTRO_6, 1000);
                             break;
                         case EVENT_OUTRO_6:
-                            if (Creature* tyrannus = ObjectAccessor::GetCreature(*me, _instanceScript->GetData64(DATA_TYRANNUS_EVENT)))
+                            if (Creature* tyrannus = ObjectAccessor::GetCreature(*me, _instanceScript->GetGuidData(DATA_TYRANNUS_EVENT)))
                             {
                                 tyrannus->SetSpeed(MOVE_FLIGHT, 3.5f, true);
                                 tyrannus->GetMotionMaster()->MovePoint(1, outroPos[4]);
@@ -494,8 +493,8 @@ class boss_krick : public CreatureScript
             EventMap _events;
 
             KrickPhase _phase;
-            uint64 _outroNpcGUID;
-            uint64 _tyrannusGUID;
+            ObjectGuid _outroNpcGUID;
+            ObjectGuid _tyrannusGUID;
         };
 
         CreatureAI* GetAI(Creature* creature) const override

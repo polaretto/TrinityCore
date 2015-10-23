@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -223,7 +223,13 @@ public:
     {
         npc_volcanoAI(Creature* creature) : ScriptedAI(creature)
         {
+            Initialize();
             SetCombatMovement(false);
+        }
+
+        void Initialize()
+        {
+            wait = 3000;
         }
 
         void Reset() override
@@ -232,7 +238,7 @@ public:
             me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
             //DoCast(me, SPELL_VOLCANIC_ERUPTION);
             me->SetReactState(REACT_PASSIVE);
-            wait = 3000;
+            Initialize();
         }
         uint32 wait;
 

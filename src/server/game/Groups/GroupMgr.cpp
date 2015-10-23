@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +24,7 @@
 GroupMgr::GroupMgr()
 {
     NextGroupDbStoreId = 1;
-    NextGroupId = 1;
+    NextGroupId = UI64LIT(1);
 }
 
 GroupMgr::~GroupMgr()
@@ -82,7 +82,7 @@ Group* GroupMgr::GetGroupByDbStoreId(uint32 storageId) const
     return NULL;
 }
 
-uint32 GroupMgr::GenerateGroupId()
+ObjectGuid::LowType GroupMgr::GenerateGroupId()
 {
     if (NextGroupId >= 0xFFFFFFFE)
     {
@@ -92,9 +92,9 @@ uint32 GroupMgr::GenerateGroupId()
     return NextGroupId++;
 }
 
-Group* GroupMgr::GetGroupByGUID(uint32 groupId) const
+Group* GroupMgr::GetGroupByGUID(ObjectGuid const& groupId) const
 {
-    GroupContainer::const_iterator itr = GroupStore.find(groupId);
+    GroupContainer::const_iterator itr = GroupStore.find(groupId.GetCounter());
     if (itr != GroupStore.end())
         return itr->second;
 
@@ -103,12 +103,12 @@ Group* GroupMgr::GetGroupByGUID(uint32 groupId) const
 
 void GroupMgr::AddGroup(Group* group)
 {
-    GroupStore[group->GetLowGUID()] = group;
+    GroupStore[group->GetGUID().GetCounter()] = group;
 }
 
 void GroupMgr::RemoveGroup(Group* group)
 {
-    GroupStore.erase(group->GetLowGUID());
+    GroupStore.erase(group->GetGUID().GetCounter());
 }
 
 void GroupMgr::LoadGroups()
@@ -123,8 +123,8 @@ void GroupMgr::LoadGroups()
 
         //                                                        0              1           2             3                 4      5          6      7         8       9
         QueryResult result = CharacterDatabase.Query("SELECT g.leaderGuid, g.lootMethod, g.looterGuid, g.lootThreshold, g.icon1, g.icon2, g.icon3, g.icon4, g.icon5, g.icon6"
-            //  10         11          12         13              14                  15            16        17          18
-            ", g.icon7, g.icon8, g.groupType, g.difficulty, g.raiddifficulty, g.masterLooterGuid, g.guid, lfg.dungeon, lfg.state FROM groups g LEFT JOIN lfg_data lfg ON lfg.guid = g.guid ORDER BY g.guid ASC");
+            //  10         11          12         13              14                  15                     16             17          18         19
+            ", g.icon7, g.icon8, g.groupType, g.difficulty, g.raiddifficulty, g.legacyRaidDifficulty, g.masterLooterGuid, g.guid, lfg.dungeon, lfg.state FROM groups g LEFT JOIN lfg_data lfg ON lfg.guid = g.guid ORDER BY g.guid ASC");
         if (!result)
         {
             TC_LOG_INFO("server.loading", ">> Loaded 0 group definitions. DB table `groups` is empty!");
@@ -181,7 +181,7 @@ void GroupMgr::LoadGroups()
             Group* group = GetGroupByDbStoreId(fields[0].GetUInt32());
 
             if (group)
-                group->LoadMemberFromDB(fields[1].GetUInt32(), fields[2].GetUInt8(), fields[3].GetUInt8(), fields[4].GetUInt8());
+                group->LoadMemberFromDB(fields[1].GetUInt64(), fields[2].GetUInt8(), fields[3].GetUInt8(), fields[4].GetUInt8());
             else
                 TC_LOG_ERROR("misc", "GroupMgr::LoadGroups: Consistency failed, can't find group (storage id: %u)", fields[0].GetUInt32());
 
@@ -220,13 +220,11 @@ void GroupMgr::LoadGroups()
             }
 
             uint32 diff = fields[4].GetUInt8();
-            if (diff >= uint32(mapEntry->IsRaid() ? MAX_RAID_DIFFICULTY : MAX_DUNGEON_DIFFICULTY))
-            {
-                TC_LOG_ERROR("sql.sql", "Wrong dungeon difficulty use in group_instance table: %d", diff + 1);
-                diff = 0;                                   // default for both difficaly types
-            }
+            DifficultyEntry const* difficultyEntry = sDifficultyStore.LookupEntry(diff);
+            if (!difficultyEntry || difficultyEntry->InstanceType != mapEntry->InstanceType)
+                continue;
 
-            InstanceSave* save = sInstanceSaveMgr->AddInstanceSave(mapEntry->MapID, fields[2].GetUInt32(), Difficulty(diff), time_t(fields[5].GetUInt32()), fields[6].GetUInt64() != 0, true);
+            InstanceSave* save = sInstanceSaveMgr->AddInstanceSave(mapEntry->ID, fields[2].GetUInt32(), Difficulty(diff), time_t(fields[5].GetUInt32()), fields[6].GetUInt64() != 0, true);
             group->BindToInstance(save, fields[3].GetBool(), true);
             ++count;
         }
@@ -234,4 +232,11 @@ void GroupMgr::LoadGroups()
 
         TC_LOG_INFO("server.loading", ">> Loaded %u group-instance saves in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
     }
+}
+
+void GroupMgr::Update(uint32 diff)
+{
+    for (GroupContainer::iterator itr = GroupStore.begin(); itr != GroupStore.end(); itr++)
+        if (itr->second)
+            itr->second->Update(diff);
 }

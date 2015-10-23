@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,20 +44,7 @@ class instance_oculus : public InstanceMapScript
                 SetBossNumber(EncounterCount);
                 LoadDoorData(doorData);
 
-                DrakosGUID          = 0;
-                VarosGUID           = 0;
-                UromGUID            = 0;
-                EregosGUID          = 0;
-
                 CentrifugueConstructCounter = 0;
-
-                EregosCacheGUID     = 0;
-
-                GreaterWhelpList.clear();
-
-                BelgaristraszGUID   = 0;
-                EternosGUID         = 0;
-                VerdisaGUID         = 0;
             }
 
             void OnCreatureCreate(Creature* creature) override
@@ -70,7 +57,7 @@ class instance_oculus : public InstanceMapScript
                     case NPC_VAROS:
                         VarosGUID = creature->GetGUID();
                         if (GetBossState(DATA_DRAKOS) == DONE)
-                           creature->SetPhaseMask(1, true);
+                            creature->SetPhaseMask(1, true);
                         break;
                     case NPC_UROM:
                         UromGUID = creature->GetGUID();
@@ -166,17 +153,17 @@ class instance_oculus : public InstanceMapScript
                 }
             }
 
-            void FillInitialWorldStates(WorldPacket& data) override
+            void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
             {
                 if (GetBossState(DATA_DRAKOS) == DONE && GetBossState(DATA_VAROS) != DONE)
                 {
-                    data << uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_SHOW) << uint32(1);
-                    data << uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_AMOUNT) << uint32(CentrifugueConstructCounter);
+                    packet.Worldstates.emplace_back(uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_SHOW), 1);
+                    packet.Worldstates.emplace_back(uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_AMOUNT), int32(CentrifugueConstructCounter));
                 }
                 else
                 {
-                    data << uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_SHOW) << uint32(0);
-                    data << uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_AMOUNT) << uint32(0);
+                    packet.Worldstates.emplace_back(uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_SHOW), 0);
+                    packet.Worldstates.emplace_back(uint32(WORLD_STATE_CENTRIFUGE_CONSTRUCT_AMOUNT), 0);
                 }
             }
 
@@ -205,6 +192,7 @@ class instance_oculus : public InstanceMapScript
                             FreeDragons();
                             if (Creature* varos = instance->GetCreature(VarosGUID))
                                 varos->SetPhaseMask(1, true);
+                            events.ScheduleEvent(EVENT_VAROS_INTRO, 15000);
                         }
                         break;
                     case DATA_VAROS:
@@ -222,6 +210,7 @@ class instance_oculus : public InstanceMapScript
                             {
                                 eregos->SetPhaseMask(1, true);
                                 GreaterWhelps();
+                                events.ScheduleEvent(EVENT_EREGOS_INTRO, 5000);
                             }
                         }
                         break;
@@ -240,7 +229,22 @@ class instance_oculus : public InstanceMapScript
                 return true;
             }
 
-            uint64 GetData64(uint32 type) const override
+            uint32 GetData(uint32 type) const override
+            {
+                if (type == DATA_CONSTRUCTS)
+                {
+                    if (CentrifugueConstructCounter == 0)
+                        return KILL_NO_CONSTRUCT;
+                    else if (CentrifugueConstructCounter == 1)
+                        return KILL_ONE_CONSTRUCT;
+                    else if (CentrifugueConstructCounter > 1)
+                        return KILL_MORE_CONSTRUCT;
+                }
+
+                return KILL_NO_CONSTRUCT;
+            }
+
+            ObjectGuid GetGuidData(uint32 type) const override
             {
                 switch (type)
                 {
@@ -256,7 +260,7 @@ class instance_oculus : public InstanceMapScript
                         break;
                 }
 
-                return 0;
+                return ObjectGuid::Empty;
             }
 
             void FreeDragons()
@@ -280,28 +284,52 @@ class instance_oculus : public InstanceMapScript
                 }
             }
 
+            void Update(uint32 diff) override
+            {
+                events.Update(diff);
+
+                while (uint32 eventId = events.ExecuteEvent())
+                {
+                    switch (eventId)
+                    {
+                        case EVENT_VAROS_INTRO:
+                            if (Creature* varos = instance->GetCreature(VarosGUID))
+                                varos->AI()->Talk(SAY_VAROS_INTRO_TEXT);
+                            break;
+                        case EVENT_EREGOS_INTRO:
+                            if (Creature* eregos = instance->GetCreature(EregosGUID))
+                                eregos->AI()->Talk(SAY_EREGOS_INTRO_TEXT);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+
             void GreaterWhelps()
             {
-                for (uint64 guid : GreaterWhelpList)
+                for (ObjectGuid guid : GreaterWhelpList)
                     if (Creature* gwhelp = instance->GetCreature(guid))
                         gwhelp->SetPhaseMask(1, true);
             }
 
         protected:
-            uint64 DrakosGUID;
-            uint64 VarosGUID;
-            uint64 UromGUID;
-            uint64 EregosGUID;
+            ObjectGuid DrakosGUID;
+            ObjectGuid VarosGUID;
+            ObjectGuid UromGUID;
+            ObjectGuid EregosGUID;
 
-            uint64 BelgaristraszGUID;
-            uint64 EternosGUID;
-            uint64 VerdisaGUID;
+            ObjectGuid BelgaristraszGUID;
+            ObjectGuid EternosGUID;
+            ObjectGuid VerdisaGUID;
 
             uint8 CentrifugueConstructCounter;
 
-            uint64 EregosCacheGUID;
+            ObjectGuid EregosCacheGUID;
 
-            std::list<uint64> GreaterWhelpList;
+            GuidList GreaterWhelpList;
+
+            EventMap events;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

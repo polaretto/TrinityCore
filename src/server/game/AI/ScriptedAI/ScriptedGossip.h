@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ enum eTradeskill
     TRADESKILL_SKINNING                 = 13,
     TRADESKILL_JEWLCRAFTING             = 14,
     TRADESKILL_INSCRIPTION              = 15,
+    TRADESKILL_ARCHAEOLOGY              = 16,
 
     TRADESKILL_LEVEL_NONE               = 0,
     TRADESKILL_LEVEL_APPRENTICE         = 1,
@@ -52,6 +53,7 @@ enum eTradeskill
     TRADESKILL_LEVEL_ARTISAN            = 4,
     TRADESKILL_LEVEL_MASTER             = 5,
     TRADESKILL_LEVEL_GRAND_MASTER       = 6,
+    TRADESKILL_LEVEL_ILLUSTRIOUS        = 7,
 
     // Gossip defines
     GOSSIP_ACTION_TRADE                 = 1,

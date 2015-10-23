@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -95,12 +95,7 @@ enum Spells
     SPELL_DEATH                 = 42566       //not correct spell
 };
 
-struct Locations
-{
-    float x, y, z;
-};
-
-static Locations FlightPoint[]=
+G3D::Vector3 const FlightPoint[]=
 {
     {1754.00f, 1346.00f, 17.50f},
     {1765.00f, 1347.00f, 19.00f},
@@ -125,7 +120,7 @@ static Locations FlightPoint[]=
     {1758.00f, 1367.00f, 19.51f}
 };
 
-static Locations Spawn[]=
+G3D::Vector3 const Spawn[]=
 {
     {1776.27f, 1348.74f, 19.20f},       //spawn point for pumpkin shrine mob
     {1765.28f, 1347.46f, 17.55f}     //spawn point for smoke
@@ -240,14 +235,14 @@ public:
         void Initialize()
         {
             Phase = 0;
-            bodyGUID = 0;
+            bodyGUID.Clear();
             die = false;
             withbody = true;
             wait = 1000;
             laugh = urand(15000, 30000);
         }
 
-        uint64 bodyGUID;
+        ObjectGuid bodyGUID;
 
         uint32 Phase;
         uint32 laugh;
@@ -390,8 +385,6 @@ public:
         {
             Initialize();
             instance = creature->GetInstanceScript();
-            headGUID = 0;
-            PlayerGUID = 0;
             id = 0;
             whirlwind = 0;
             wp_reached = false;
@@ -417,8 +410,8 @@ public:
 
         InstanceScript* instance;
 
-        uint64 headGUID;
-        uint64 PlayerGUID;
+        ObjectGuid headGUID;
+        ObjectGuid PlayerGUID;
 
         uint32 Phase;
         uint32 id;
@@ -443,12 +436,12 @@ public:
         {
             Initialize();
             DoCast(me, SPELL_HEAD);
-            if (headGUID)
+            if (!headGUID.IsEmpty())
             {
                 if (Creature* Head = ObjectAccessor::GetCreature((*me), headGUID))
-                    Head->DisappearAndDie();
+                    Head->DespawnOrUnsummon();
 
-                headGUID = 0;
+                headGUID.Clear();
             }
 
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
@@ -545,11 +538,7 @@ public:
 
         Player* SelectRandomPlayer(float range = 0.0f, bool checkLoS = true)
         {
-            Map* map = me->GetMap();
-            if (!map->IsDungeon())
-                return NULL;
-
-            Map::PlayerList const &PlayerList = map->GetPlayers();
+            Map::PlayerList const &PlayerList = me->GetMap()->GetPlayers();
             if (PlayerList.isEmpty())
                 return NULL;
 
@@ -806,18 +795,17 @@ public:
         npc_pulsing_pumpkinAI(Creature* creature) : ScriptedAI(creature)
         {
             sprouted = false;
-            debuffGUID = 0;
         }
 
         bool sprouted;
-        uint64 debuffGUID;
+        ObjectGuid debuffGUID;
 
         void Reset() override
         {
             float x, y, z;
             me->GetPosition(x, y, z);   //this visual aura some under ground
             me->SetPosition(x, y, z + 0.35f, 0.0f);
-            debuffGUID = 0;
+            debuffGUID.Clear();
             Despawn();
             Creature* debuff = DoSpawnCreature(HELPER, 0, 0, 0, 0, TEMPSUMMON_TIMED_OR_CORPSE_DESPAWN, 14500);
             if (debuff)
@@ -857,7 +845,7 @@ public:
             if (debuff)
             {
                 debuff->SetVisible(false);
-                debuffGUID = 0;
+                debuffGUID.Clear();
             }
         }
 
@@ -885,34 +873,37 @@ public:
     };
 };
 
+enum LooselyTurnedSoil
+{
+    QUEST_CALL_THE_HEADLESS_HORSEMAN = 11405
+};
+
 class go_loosely_turned_soil : public GameObjectScript
 {
 public:
     go_loosely_turned_soil() : GameObjectScript("go_loosely_turned_soil") { }
 
-    bool OnGossipHello(Player* player, GameObject* soil) override
+    bool OnGossipHello(Player* player, GameObject* /*go*/) override
     {
-        InstanceScript* instance = player->GetInstanceScript();
-        if (instance)
-        {
-            if (instance->GetBossState(DATA_HORSEMAN_EVENT) != NOT_STARTED)
+        if (InstanceScript* instance = player->GetInstanceScript())
+            if (instance->GetBossState(DATA_HORSEMAN_EVENT) == IN_PROGRESS || player->GetQuestStatus(QUEST_CALL_THE_HEADLESS_HORSEMAN) != QUEST_STATUS_COMPLETE)
                 return true;
-            instance->SetBossState(DATA_HORSEMAN_EVENT, IN_PROGRESS);
-        }
-    /*  if (soil->GetGoType() == GAMEOBJECT_TYPE_QUESTGIVER && player->getLevel() > 64)
-        {
-            player->PrepareQuestMenu(soil->GetGUID());
-            player->SendPreparedQuest(soil->GetGUID());
-        }
-        if (player->GetQuestStatus(11405) == QUEST_STATUS_INCOMPLETE && player->getLevel() > 64)
-        { */
+
+        return false;
+    }
+
+    bool OnQuestReward(Player* player, GameObject* go, Quest const* /*quest*/, uint32 /*opt*/) override
+    {
+        if (InstanceScript* instance = go->GetInstanceScript())
+            if (instance->GetBossState(DATA_HORSEMAN_EVENT) == IN_PROGRESS)
+                return false;
+
             player->AreaExploredOrEventHappens(11405);
-            if (Creature* horseman = soil->SummonCreature(HH_MOUNTED, FlightPoint[20].x, FlightPoint[20].y, FlightPoint[20].z, 0, TEMPSUMMON_MANUAL_DESPAWN, 0))
+            if (Creature* horseman = go->SummonCreature(HH_MOUNTED, FlightPoint[20].x, FlightPoint[20].y, FlightPoint[20].z, 0, TEMPSUMMON_MANUAL_DESPAWN, 0))
             {
                 ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, horseman->AI())->PlayerGUID = player->GetGUID();
                 ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, horseman->AI())->FlyMode();
             }
-        //}
         return true;
     }
 };
@@ -922,7 +913,7 @@ void npc_head::npc_headAI::Disappear()
     if (withbody)
         return;
 
-    if (bodyGUID)
+    if (!bodyGUID.IsEmpty())
     {
         Creature* body = ObjectAccessor::GetCreature((*me), bodyGUID);
         if (body && body->IsAlive())

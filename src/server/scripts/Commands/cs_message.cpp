@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,29 +34,26 @@ class message_commandscript : public CommandScript
 public:
     message_commandscript() : CommandScript("message_commandscript") { }
 
-    ChatCommand* GetCommands() const override
+    std::vector<ChatCommand> GetCommands() const override
     {
-        static ChatCommand channelSetCommandTable[] =
+        static std::vector<ChatCommand> channelSetCommandTable =
         {
-            { "ownership", rbac::RBAC_PERM_COMMAND_CHANNEL_SET_OWNERSHIP, false, &HandleChannelSetOwnership, "", NULL },
-            { NULL,        0,                                       false, NULL,                       "", NULL }
+            { "ownership", rbac::RBAC_PERM_COMMAND_CHANNEL_SET_OWNERSHIP, false, &HandleChannelSetOwnership, "" },
         };
-        static ChatCommand channelCommandTable[] =
+        static std::vector<ChatCommand> channelCommandTable =
         {
             { "set", rbac::RBAC_PERM_COMMAND_CHANNEL_SET, true, NULL, "", channelSetCommandTable },
-            { NULL,  0,                            false, NULL, "", NULL }
         };
-        static ChatCommand commandTable[] =
+        static std::vector<ChatCommand> commandTable =
         {
             { "channel",        rbac::RBAC_PERM_COMMAND_CHANNEL,        true, NULL,                         "", channelCommandTable  },
-            { "nameannounce",   rbac::RBAC_PERM_COMMAND_NAMEANNOUNCE,   true, &HandleNameAnnounceCommand,   "", NULL },
-            { "gmnameannounce", rbac::RBAC_PERM_COMMAND_GMNAMEANNOUNCE, true, &HandleGMNameAnnounceCommand, "", NULL },
-            { "announce",       rbac::RBAC_PERM_COMMAND_ANNOUNCE,       true, &HandleAnnounceCommand,       "", NULL },
-            { "gmannounce",     rbac::RBAC_PERM_COMMAND_GMANNOUNCE,     true, &HandleGMAnnounceCommand,     "", NULL },
-            { "notify",         rbac::RBAC_PERM_COMMAND_NOTIFY,         true, &HandleNotifyCommand,         "", NULL },
-            { "gmnotify",       rbac::RBAC_PERM_COMMAND_GMNOTIFY,       true, &HandleGMNotifyCommand,       "", NULL },
-            { "whispers",       rbac::RBAC_PERM_COMMAND_WHISPERS,      false, &HandleWhispersCommand,       "", NULL },
-            { NULL,             0,                               false, NULL,                         "", NULL }
+            { "nameannounce",   rbac::RBAC_PERM_COMMAND_NAMEANNOUNCE,   true, &HandleNameAnnounceCommand,   "" },
+            { "gmnameannounce", rbac::RBAC_PERM_COMMAND_GMNAMEANNOUNCE, true, &HandleGMNameAnnounceCommand, "" },
+            { "announce",       rbac::RBAC_PERM_COMMAND_ANNOUNCE,       true, &HandleAnnounceCommand,       "" },
+            { "gmannounce",     rbac::RBAC_PERM_COMMAND_GMANNOUNCE,     true, &HandleGMAnnounceCommand,     "" },
+            { "notify",         rbac::RBAC_PERM_COMMAND_NOTIFY,         true, &HandleNotifyCommand,         "" },
+            { "gmnotify",       rbac::RBAC_PERM_COMMAND_GMNOTIFY,       true, &HandleGMNotifyCommand,       "" },
+            { "whispers",       rbac::RBAC_PERM_COMMAND_WHISPERS,      false, &HandleWhispersCommand,       "" },
         };
         return commandTable;
     }
@@ -74,7 +71,7 @@ public:
         Player* player = handler->GetSession()->GetPlayer();
         Channel* channcel = NULL;
 
-        if (ChannelMgr* cMgr = ChannelMgr::forTeam(player->GetTeam()))
+        if (ChannelMgr* cMgr = ChannelMgr::ForTeam(player->GetTeam()))
             channcel = cMgr->GetChannel(channelStr, player);
 
         if (strcmp(argStr, "on") == 0)
@@ -134,9 +131,9 @@ public:
         if (!*args)
             return false;
 
-        char buff[2048];
-        sprintf(buff, handler->GetTrinityString(LANG_SYSTEMMESSAGE), args);
-        sWorld->SendServerMessage(SERVER_MSG_STRING, buff);
+        std::string str = handler->PGetParseString(LANG_SYSTEMMESSAGE, args);
+
+        sWorld->SendServerMessage(SERVER_MSG_STRING, str);
         return true;
     }
     // announce to logged in GMs
@@ -157,9 +154,7 @@ public:
         std::string str = handler->GetTrinityString(LANG_GLOBAL_NOTIFY);
         str += args;
 
-        WorldPacket data(SMSG_NOTIFICATION, (str.size()+1));
-        data << str;
-        sWorld->SendGlobalMessage(&data);
+        sWorld->SendGlobalMessage(WorldPackets::Chat::PrintNotification(str).Write());
 
         return true;
     }
@@ -172,9 +167,7 @@ public:
         std::string str = handler->GetTrinityString(LANG_GM_NOTIFY);
         str += args;
 
-        WorldPacket data(SMSG_NOTIFICATION, (str.size()+1));
-        data << str;
-        sWorld->SendGlobalGMMessage(&data);
+        sWorld->SendGlobalGMMessage(WorldPackets::Chat::PrintNotification(str).Write());
 
         return true;
     }
@@ -211,7 +204,7 @@ public:
             std::string name = strtok(NULL, " ");
             if (normalizePlayerName(name))
             {
-                if (Player* player = sObjectAccessor->FindPlayerByName(name))
+                if (Player* player = ObjectAccessor::FindPlayerByName(name))
                 {
                     handler->GetSession()->GetPlayer()->RemoveFromWhisperWhiteList(player->GetGUID());
                     handler->PSendSysMessage(LANG_COMMAND_WHISPEROFFPLAYER, name.c_str());

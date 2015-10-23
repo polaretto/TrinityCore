@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2006-2009 ScriptDev2 <https://scriptdev2.svn.sourceforge.net/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -134,7 +134,7 @@ public:
 
         uint32 FlameWreathTimer;
         uint32 FlameWreathCheckTime;
-        uint64 FlameWreathTarget[3];
+        ObjectGuid FlameWreathTarget[3];
         float FWTargPosX[3];
         float FWTargPosY[3];
 
@@ -155,7 +155,7 @@ public:
 
             // Not in progress
             instance->SetData(TYPE_ARAN, NOT_STARTED);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_LIBRARY_DOOR), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_LIBRARY_DOOR), true);
         }
 
         void KilledUnit(Unit* /*victim*/) override
@@ -168,7 +168,7 @@ public:
             Talk(SAY_DEATH);
 
             instance->SetData(TYPE_ARAN, DONE);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_LIBRARY_DOOR), true);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_LIBRARY_DOOR), true);
         }
 
         void EnterCombat(Unit* /*who*/) override
@@ -176,7 +176,7 @@ public:
             Talk(SAY_AGGRO);
 
             instance->SetData(TYPE_ARAN, IN_PROGRESS);
-            instance->HandleGameObject(instance->GetData64(DATA_GO_LIBRARY_DOOR), false);
+            instance->HandleGameObject(instance->GetGuidData(DATA_GO_LIBRARY_DOOR), false);
         }
 
         void FlameWreathEffect()
@@ -223,7 +223,7 @@ public:
             {
                 if (CloseDoorTimer <= diff)
                 {
-                    instance->HandleGameObject(instance->GetData64(DATA_GO_LIBRARY_DOOR), false);
+                    instance->HandleGameObject(instance->GetGuidData(DATA_GO_LIBRARY_DOOR), false);
                     CloseDoorTimer = 0;
                 } else CloseDoorTimer -= diff;
             }
@@ -393,9 +393,9 @@ public:
                         FlameWreathTimer = 20000;
                         FlameWreathCheckTime = 500;
 
-                        FlameWreathTarget[0] = 0;
-                        FlameWreathTarget[1] = 0;
-                        FlameWreathTarget[2] = 0;
+                        FlameWreathTarget[0].Clear();
+                        FlameWreathTarget[1].Clear();
+                        FlameWreathTarget[2].Clear();
 
                         FlameWreathEffect();
                         break;
@@ -465,7 +465,7 @@ public:
                         {
                             unit->CastSpell(unit, 20476, true, 0, 0, me->GetGUID());
                             unit->CastSpell(unit, 11027, true);
-                            FlameWreathTarget[i] = 0;
+                            FlameWreathTarget[i].Clear();
                         }
                     }
                     FlameWreathCheckTime = 500;
@@ -485,23 +485,23 @@ public:
         void SpellHit(Unit* /*pAttacker*/, const SpellInfo* Spell) override
         {
             //We only care about interrupt effects and only if they are durring a spell currently being cast
-            if ((Spell->Effects[0].Effect != SPELL_EFFECT_INTERRUPT_CAST &&
-                Spell->Effects[1].Effect != SPELL_EFFECT_INTERRUPT_CAST &&
-                Spell->Effects[2].Effect != SPELL_EFFECT_INTERRUPT_CAST) || !me->IsNonMeleeSpellCast(false))
-                return;
+            for (SpellEffectInfo const* effect : Spell->GetEffectsForDifficulty(me->GetMap()->GetDifficultyID()))
+                if (effect && effect->Effect == SPELL_EFFECT_INTERRUPT_CAST && me->IsNonMeleeSpellCast(false))
+                {
+                    //Interrupt effect
+                    me->InterruptNonMeleeSpells(false);
 
-            //Interrupt effect
-            me->InterruptNonMeleeSpells(false);
+                    //Normally we would set the cooldown equal to the spell duration
+                    //but we do not have access to the DurationStore
 
-            //Normally we would set the cooldown equal to the spell duration
-            //but we do not have access to the DurationStore
-
-            switch (CurrentNormalSpell)
-            {
-                case SPELL_ARCMISSLE: ArcaneCooldown = 5000; break;
-                case SPELL_FIREBALL: FireCooldown = 5000; break;
-                case SPELL_FROSTBOLT: FrostCooldown = 5000; break;
-            }
+                    switch (CurrentNormalSpell)
+                    {
+                    case SPELL_ARCMISSLE: ArcaneCooldown = 5000; break;
+                    case SPELL_FIREBALL: FireCooldown = 5000; break;
+                    case SPELL_FROSTBOLT: FrostCooldown = 5000; break;
+                    }
+                    return;
+                }
         }
     };
 };

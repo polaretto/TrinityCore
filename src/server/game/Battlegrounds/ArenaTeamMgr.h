@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -37,7 +37,7 @@ public:
 
     ArenaTeam* GetArenaTeamById(uint32 arenaTeamId) const;
     ArenaTeam* GetArenaTeamByName(std::string const& arenaTeamName) const;
-    ArenaTeam* GetArenaTeamByCaptain(uint64 guid) const;
+    ArenaTeam* GetArenaTeamByCaptain(ObjectGuid guid) const;
 
     void LoadArenaTeams();
     void AddArenaTeam(ArenaTeam* arenaTeam);
@@ -45,8 +45,6 @@ public:
 
     ArenaTeamContainer::iterator GetArenaTeamMapBegin() { return ArenaTeamStore.begin(); }
     ArenaTeamContainer::iterator GetArenaTeamMapEnd()   { return ArenaTeamStore.end(); }
-
-    void DistributeArenaPoints();
 
     uint32 GenerateArenaTeamId();
     void SetNextArenaTeamId(uint32 Id) { NextArenaTeamId = Id; }

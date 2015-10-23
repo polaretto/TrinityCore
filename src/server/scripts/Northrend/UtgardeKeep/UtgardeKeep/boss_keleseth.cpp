@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -94,7 +94,7 @@ class npc_frost_tomb : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
-                if (Creature* keleseth = ObjectAccessor::GetCreature(*me, _instance->GetData64(DATA_PRINCE_KELESETH)))
+                if (Creature* keleseth = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_PRINCE_KELESETH)))
                     keleseth->AI()->SetData(DATA_ON_THE_ROCKS, false);
             }
 
@@ -355,7 +355,6 @@ class spell_frost_tomb : public SpellScriptLoader
             return new spell_frost_tomb_AuraScript();
         }
 };
-
 
 class achievement_on_the_rocks : public AchievementCriteriaScript
 {

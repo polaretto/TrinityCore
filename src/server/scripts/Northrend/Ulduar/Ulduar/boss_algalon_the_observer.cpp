@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -242,7 +242,7 @@ class ActivateLivingConstellation : public BasicEvent
         {
         }
 
-        bool Execute(uint64 execTime, uint32 /*diff*/)
+        bool Execute(uint64 execTime, uint32 /*diff*/) override
         {
             if (!_instance || _instance->GetBossState(BOSS_ALGALON) != IN_PROGRESS)
                 return true;    // delete event
@@ -264,7 +264,7 @@ class CosmicSmashDamageEvent : public BasicEvent
         {
         }
 
-        bool Execute(uint64 /*execTime*/, uint32 /*diff*/)
+        bool Execute(uint64 /*execTime*/, uint32 /*diff*/) override
         {
             _caster->CastSpell((Unit*)NULL, SPELL_COSMIC_SMASH_TRIGGERED, TRIGGERED_FULL_MASK);
             return true;
@@ -281,7 +281,7 @@ class SummonUnleashedDarkMatter : public BasicEvent
         {
         }
 
-        bool Execute(uint64 execTime, uint32 /*diff*/)
+        bool Execute(uint64 execTime, uint32 /*diff*/) override
         {
             _caster->CastSpell((Unit*)NULL, SPELL_SUMMON_UNLEASHED_DARK_MATTER, TRIGGERED_FULL_MASK);
             _caster->m_Events.AddEvent(this, execTime + 30000);
@@ -322,7 +322,7 @@ class boss_algalon_the_observer : public CreatureScript
 
             void KilledUnit(Unit* victim) override
             {
-                if (victim->GetTypeId() == TYPEID_UNIT)
+                if (victim->GetTypeId() == TYPEID_PLAYER)
                 {
                     _fedOnTears = true;
                     if (!_hasYelled)
@@ -403,7 +403,7 @@ class boss_algalon_the_observer : public CreatureScript
                 {
                     _firstPull = false;
                     Talk(SAY_ALGALON_START_TIMER);
-                    if (Creature* brann = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_BRANN_BRONZEBEARD_ALG)))
+                    if (Creature* brann = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BRANN_BRONZEBEARD_ALG)))
                         brann->AI()->DoAction(ACTION_FINISH_INTRO);
 
                     me->setActive(true);
@@ -980,7 +980,7 @@ class go_celestial_planetarium_access : public GameObjectScript
             bool GossipHello(Player* player) override
             {
                 bool hasKey = true;
-                if (LockEntry const* lock = sLockStore.LookupEntry(go->GetGOInfo()->goober.lockId))
+                if (LockEntry const* lock = sLockStore.LookupEntry(go->GetGOInfo()->GetLockId()))
                 {
                     hasKey = false;
                     for (uint32 i = 0; i < MAX_LOCK_CASE; ++i)
@@ -1008,10 +1008,10 @@ class go_celestial_planetarium_access : public GameObjectScript
                 if (InstanceScript* instance = go->GetInstanceScript())
                 {
                     instance->SetData(DATA_ALGALON_SUMMON_STATE, 1);
-                    if (GameObject* sigil = ObjectAccessor::GetGameObject(*go, instance->GetData64(DATA_SIGILDOOR_01)))
+                    if (GameObject* sigil = ObjectAccessor::GetGameObject(*go, instance->GetGuidData(DATA_SIGILDOOR_01)))
                         sigil->SetGoState(GO_STATE_ACTIVE);
 
-                    if (GameObject* sigil = ObjectAccessor::GetGameObject(*go, instance->GetData64(DATA_SIGILDOOR_02)))
+                    if (GameObject* sigil = ObjectAccessor::GetGameObject(*go, instance->GetGuidData(DATA_SIGILDOOR_02)))
                         sigil->SetGoState(GO_STATE_ACTIVE);
                 }
 
@@ -1206,9 +1206,15 @@ class spell_algalon_big_bang : public SpellScriptLoader
         {
             PrepareSpellScript(spell_algalon_big_bang_SpellScript);
 
-            bool Load() override
+        public:
+            spell_algalon_big_bang_SpellScript()
             {
                 _targetCount = 0;
+            }
+
+        private:
+            bool Load() override
+            {
                 return GetCaster()->GetTypeId() == TYPEID_UNIT && GetCaster()->IsAIEnabled;
             }
 

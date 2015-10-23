@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -114,7 +114,7 @@ public:
         {
             Enraged = false;
 
-            if (Creature* temp =  ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_ALYTHESS)))
+            if (Creature* temp =  ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ALYTHESS)))
             {
                 if (temp->isDead())
                     temp->Respawn();
@@ -134,7 +134,7 @@ public:
         {
             DoZoneInCombat();
 
-            Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_ALYTHESS));
+            Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_ALYTHESS));
             if (temp && temp->IsAlive() && !temp->GetVictim())
                 temp->AI()->AttackStart(who);
 
@@ -157,7 +157,7 @@ public:
                 instance->SetBossState(DATA_EREDAR_TWINS, DONE);
             }
             else
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
         }
 
         void SpellHitTarget(Unit* target, const SpellInfo* spell) override
@@ -207,7 +207,7 @@ public:
         {
             if (!SisterDeath)
             {
-                Unit* Temp = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_ALYTHESS));
+                Unit* Temp = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_ALYTHESS));
                 if (Temp && Temp->isDead())
                 {
                     Talk(YELL_SISTER_ALYTHESS_DEAD);
@@ -366,7 +366,7 @@ public:
         {
             Enraged = false;
 
-            if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_SACROLASH)))
+            if (Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SACROLASH)))
             {
                 if (temp->isDead())
                     temp->Respawn();
@@ -386,7 +386,7 @@ public:
         {
             DoZoneInCombat();
 
-            Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_SACROLASH));
+            Creature* temp = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SACROLASH));
             if (temp && temp->IsAlive() && !temp->GetVictim())
                 temp->AI()->AttackStart(who);
 
@@ -433,7 +433,7 @@ public:
                 instance->SetBossState(DATA_EREDAR_TWINS, DONE);
             }
             else
-                me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
+                me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_LOOTABLE);
         }
 
         void SpellHitTarget(Unit* target, const SpellInfo* spell) override
@@ -486,7 +486,7 @@ public:
 
         uint32 IntroStep(uint32 step)
         {
-            Creature* Sacrolash = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_SACROLASH));
+            Creature* Sacrolash = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SACROLASH));
             switch (step)
             {
                 case 0:
@@ -535,7 +535,7 @@ public:
 
             if (!SisterDeath)
             {
-                Unit* Temp = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_SACROLASH));
+                Unit* Temp = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_SACROLASH));
                 if (Temp && Temp->isDead())
                 {
                     Talk(YELL_SISTER_SACROLASH_DEAD);
@@ -546,7 +546,7 @@ public:
             }
             if (!me->GetVictim())
             {
-                Creature* sisiter = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_SACROLASH));
+                Creature* sisiter = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_SACROLASH));
                 if (sisiter && !sisiter->isDead() && sisiter->GetVictim())
                 {
                     me->AddThreat(sisiter->GetVictim(), 0.0f);

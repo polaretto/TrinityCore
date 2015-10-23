@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -216,19 +216,19 @@ class boss_blood_council_controller : public CreatureScript
 
                 DoCast(me, SPELL_INVOCATION_OF_BLOOD_VALANAR);
 
-                if (Creature* keleseth = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_KELESETH_GUID)))
+                if (Creature* keleseth = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_KELESETH_GUID)))
                 {
                     instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, keleseth);
                     DoZoneInCombat(keleseth);
                 }
 
-                if (Creature* taldaram = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_TALDARAM_GUID)))
+                if (Creature* taldaram = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_TALDARAM_GUID)))
                 {
                     instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, taldaram);
                     DoZoneInCombat(taldaram);
                 }
 
-                if (Creature* valanar = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_VALANAR_GUID)))
+                if (Creature* valanar = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_VALANAR_GUID)))
                 {
                     instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, valanar);
                     DoZoneInCombat(valanar);
@@ -236,16 +236,16 @@ class boss_blood_council_controller : public CreatureScript
 
                 events.ScheduleEvent(EVENT_INVOCATION_OF_BLOOD, 46500);
 
-                _invocationOrder[0] = InvocationData(instance->GetData64(DATA_PRINCE_VALANAR_GUID), SPELL_INVOCATION_OF_BLOOD_VALANAR, EMOTE_VALANAR_INVOCATION, 71070);
+                _invocationOrder[0] = InvocationData(instance->GetGuidData(DATA_PRINCE_VALANAR_GUID), SPELL_INVOCATION_OF_BLOOD_VALANAR, EMOTE_VALANAR_INVOCATION, 71070);
                 if (urand(0, 1))
                 {
-                    _invocationOrder[1] = InvocationData(instance->GetData64(DATA_PRINCE_TALDARAM_GUID), SPELL_INVOCATION_OF_BLOOD_TALDARAM, EMOTE_TALDARAM_INVOCATION, 71081);
-                    _invocationOrder[2] = InvocationData(instance->GetData64(DATA_PRINCE_KELESETH_GUID), SPELL_INVOCATION_OF_BLOOD_KELESETH, EMOTE_KELESETH_INVOCATION, 71080);
+                    _invocationOrder[1] = InvocationData(instance->GetGuidData(DATA_PRINCE_TALDARAM_GUID), SPELL_INVOCATION_OF_BLOOD_TALDARAM, EMOTE_TALDARAM_INVOCATION, 71081);
+                    _invocationOrder[2] = InvocationData(instance->GetGuidData(DATA_PRINCE_KELESETH_GUID), SPELL_INVOCATION_OF_BLOOD_KELESETH, EMOTE_KELESETH_INVOCATION, 71080);
                 }
                 else
                 {
-                    _invocationOrder[1] = InvocationData(instance->GetData64(DATA_PRINCE_KELESETH_GUID), SPELL_INVOCATION_OF_BLOOD_KELESETH, EMOTE_KELESETH_INVOCATION, 71080);
-                    _invocationOrder[2] = InvocationData(instance->GetData64(DATA_PRINCE_TALDARAM_GUID), SPELL_INVOCATION_OF_BLOOD_TALDARAM, EMOTE_TALDARAM_INVOCATION, 71081);
+                    _invocationOrder[1] = InvocationData(instance->GetGuidData(DATA_PRINCE_KELESETH_GUID), SPELL_INVOCATION_OF_BLOOD_KELESETH, EMOTE_KELESETH_INVOCATION, 71080);
+                    _invocationOrder[2] = InvocationData(instance->GetGuidData(DATA_PRINCE_TALDARAM_GUID), SPELL_INVOCATION_OF_BLOOD_TALDARAM, EMOTE_TALDARAM_INVOCATION, 71081);
                 }
             }
 
@@ -259,13 +259,13 @@ class boss_blood_council_controller : public CreatureScript
             void JustReachedHome() override
             {
                 _resetCounter = 0;
-                if (Creature* keleseth = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_KELESETH_GUID)))
+                if (Creature* keleseth = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_KELESETH_GUID)))
                     keleseth->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
-                if (Creature* taldaram = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_TALDARAM_GUID)))
+                if (Creature* taldaram = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_TALDARAM_GUID)))
                     taldaram->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
 
-                if (Creature* valanar = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_VALANAR_GUID)))
+                if (Creature* valanar = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_VALANAR_GUID)))
                     valanar->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
             }
 
@@ -335,12 +335,12 @@ class boss_blood_council_controller : public CreatureScript
         private:
             struct InvocationData
             {
-                uint64 guid;
+                ObjectGuid guid;
                 uint32 spellId;
                 uint32 textId;
                 uint32 visualSpell;
 
-                InvocationData(uint64 _guid, uint32 _spellId, uint32 _textId, uint32 _visualSpell)
+                InvocationData(ObjectGuid _guid, uint32 _spellId, uint32 _textId, uint32 _visualSpell)
                 {
                     guid = _guid;
                     spellId = _spellId;
@@ -348,7 +348,7 @@ class boss_blood_council_controller : public CreatureScript
                     visualSpell = _visualSpell;
                 }
 
-                InvocationData() : guid(0), spellId(0), textId(0), visualSpell(0) { }
+                InvocationData() : spellId(0), textId(0), visualSpell(0) { }
             } _invocationOrder[3];
 
             uint32 _invocationStage;
@@ -376,7 +376,7 @@ class boss_prince_keleseth_icc : public CreatureScript
 
             void InitializeAI() override
             {
-                if (CreatureData const* data = sObjectMgr->GetCreatureData(me->GetDBTableGUIDLow()))
+                if (CreatureData const* data = sObjectMgr->GetCreatureData(me->GetSpawnId()))
                     if (data->curhealth)
                         _spawnHealth = data->curhealth;
 
@@ -400,7 +400,7 @@ class boss_prince_keleseth_icc : public CreatureScript
 
             void EnterCombat(Unit* /*who*/) override
             {
-                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_BLOOD_PRINCES_CONTROL)))
+                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BLOOD_PRINCES_CONTROL)))
                     DoZoneInCombat(controller);
 
                 events.ScheduleEvent(EVENT_BERSERK, 600000);
@@ -428,7 +428,7 @@ class boss_prince_keleseth_icc : public CreatureScript
                 instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
                 me->SetHealth(_spawnHealth);
                 _isEmpowered = false;
-                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_BLOOD_PRINCES_CONTROL)))
+                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BLOOD_PRINCES_CONTROL)))
                 {
                     me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                     controller->AI()->SetData(0, 1);
@@ -489,7 +489,7 @@ class boss_prince_keleseth_icc : public CreatureScript
                     case ACTION_STAND_UP:
                         me->RemoveAurasDueToSpell(SPELL_FEIGN_DEATH);
                         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC);
-                        me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
+                        me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
                         me->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
                         me->ForceValuesUpdateAtIndex(UNIT_NPC_FLAGS);   // was in sniff. don't ask why
                         me->m_Events.AddEvent(new StandUpEvent(*me), me->m_Events.CalculateTime(1000));
@@ -515,10 +515,10 @@ class boss_prince_keleseth_icc : public CreatureScript
                 if (!CheckBoundary(me))
                 {
                     EnterEvadeMode();
-                    if (Creature* taldaram = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_TALDARAM_GUID)))
+                    if (Creature* taldaram = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_TALDARAM_GUID)))
                         taldaram->AI()->EnterEvadeMode();
 
-                    if (Creature* valanar = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_VALANAR_GUID)))
+                    if (Creature* valanar = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_VALANAR_GUID)))
                         valanar->AI()->EnterEvadeMode();
 
                     return false;
@@ -591,7 +591,7 @@ class boss_prince_taldaram_icc : public CreatureScript
 
             void InitializeAI() override
             {
-                if (CreatureData const* data = sObjectMgr->GetCreatureData(me->GetDBTableGUIDLow()))
+                if (CreatureData const* data = sObjectMgr->GetCreatureData(me->GetSpawnId()))
                     if (data->curhealth)
                         _spawnHealth = data->curhealth;
 
@@ -620,7 +620,7 @@ class boss_prince_taldaram_icc : public CreatureScript
 
             void EnterCombat(Unit* /*who*/) override
             {
-                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_BLOOD_PRINCES_CONTROL)))
+                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BLOOD_PRINCES_CONTROL)))
                     DoZoneInCombat(controller);
 
                 events.ScheduleEvent(EVENT_BERSERK, 600000);
@@ -644,7 +644,7 @@ class boss_prince_taldaram_icc : public CreatureScript
                 instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
                 me->SetHealth(_spawnHealth);
                 _isEmpowered = false;
-                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_BLOOD_PRINCES_CONTROL)))
+                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BLOOD_PRINCES_CONTROL)))
                 {
                     me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                     controller->AI()->SetData(0, 1);
@@ -708,7 +708,7 @@ class boss_prince_taldaram_icc : public CreatureScript
                     case ACTION_STAND_UP:
                         me->RemoveAurasDueToSpell(SPELL_FEIGN_DEATH);
                         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC);
-                        me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
+                        me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
                         me->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
                         me->ForceValuesUpdateAtIndex(UNIT_NPC_FLAGS);   // was in sniff. don't ask why
                         me->m_Events.AddEvent(new StandUpEvent(*me), me->m_Events.CalculateTime(1000));
@@ -734,10 +734,10 @@ class boss_prince_taldaram_icc : public CreatureScript
                 if (!CheckBoundary(me))
                 {
                     EnterEvadeMode();
-                    if (Creature* keleseth = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_KELESETH_GUID)))
+                    if (Creature* keleseth = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_KELESETH_GUID)))
                         keleseth->AI()->EnterEvadeMode();
 
-                    if (Creature* valanar = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_VALANAR_GUID)))
+                    if (Creature* valanar = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_VALANAR_GUID)))
                         valanar->AI()->EnterEvadeMode();
 
                     return false;
@@ -815,7 +815,7 @@ class boss_prince_valanar_icc : public CreatureScript
 
             void InitializeAI() override
             {
-                if (CreatureData const* data = sObjectMgr->GetCreatureData(me->GetDBTableGUIDLow()))
+                if (CreatureData const* data = sObjectMgr->GetCreatureData(me->GetSpawnId()))
                     if (data->curhealth)
                         _spawnHealth = data->curhealth;
 
@@ -844,7 +844,7 @@ class boss_prince_valanar_icc : public CreatureScript
 
             void EnterCombat(Unit* /*who*/) override
             {
-                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_BLOOD_PRINCES_CONTROL)))
+                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BLOOD_PRINCES_CONTROL)))
                     DoZoneInCombat(controller);
 
                 events.ScheduleEvent(EVENT_BERSERK, 600000);
@@ -868,7 +868,7 @@ class boss_prince_valanar_icc : public CreatureScript
                 instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
                 me->SetHealth(me->GetMaxHealth());
                 _isEmpowered = false;
-                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_BLOOD_PRINCES_CONTROL)))
+                if (Creature* controller = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_BLOOD_PRINCES_CONTROL)))
                 {
                     me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
                     controller->AI()->SetData(0, 1);
@@ -947,7 +947,7 @@ class boss_prince_valanar_icc : public CreatureScript
                     case ACTION_STAND_UP:
                         me->RemoveAurasDueToSpell(SPELL_FEIGN_DEATH);
                         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_IMMUNE_TO_PC);
-                        me->RemoveFlag(UNIT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
+                        me->RemoveFlag(OBJECT_DYNAMIC_FLAGS, UNIT_DYNFLAG_DEAD);
                         me->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_FEIGN_DEATH);
                         me->ForceValuesUpdateAtIndex(UNIT_NPC_FLAGS);   // was in sniff. don't ask why
                         me->m_Events.AddEvent(new StandUpEvent(*me), me->m_Events.CalculateTime(1000));
@@ -973,10 +973,10 @@ class boss_prince_valanar_icc : public CreatureScript
                 if (!CheckBoundary(me))
                 {
                     EnterEvadeMode();
-                    if (Creature* keleseth = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_KELESETH_GUID)))
+                    if (Creature* keleseth = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_KELESETH_GUID)))
                         keleseth->AI()->EnterEvadeMode();
 
-                    if (Creature* taldaram = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_PRINCE_TALDARAM_GUID)))
+                    if (Creature* taldaram = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_PRINCE_TALDARAM_GUID)))
                         taldaram->AI()->EnterEvadeMode();
 
                     return false;
@@ -1112,13 +1112,13 @@ class npc_blood_queen_lana_thel : public CreatureScript
                     _events.Reset();
 
                     // remove Feign Death from princes
-                    if (Creature* keleseth = ObjectAccessor::GetCreature(*me, _instance->GetData64(DATA_PRINCE_KELESETH_GUID)))
+                    if (Creature* keleseth = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_PRINCE_KELESETH_GUID)))
                         keleseth->AI()->DoAction(ACTION_STAND_UP);
 
-                    if (Creature* taldaram = ObjectAccessor::GetCreature(*me, _instance->GetData64(DATA_PRINCE_TALDARAM_GUID)))
+                    if (Creature* taldaram = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_PRINCE_TALDARAM_GUID)))
                         taldaram->AI()->DoAction(ACTION_STAND_UP);
 
-                    if (Creature* valanar = ObjectAccessor::GetCreature(*me, _instance->GetData64(DATA_PRINCE_VALANAR_GUID)))
+                    if (Creature* valanar = ObjectAccessor::GetCreature(*me, _instance->GetGuidData(DATA_PRINCE_VALANAR_GUID)))
                     {
                         valanar->AI()->DoAction(ACTION_STAND_UP);
                         valanar->SetHealth(valanar->GetMaxHealth());
@@ -1148,7 +1148,6 @@ class npc_ball_of_flame : public CreatureScript
             npc_ball_of_flameAI(Creature* creature) : ScriptedAI(creature), _instance(creature->GetInstanceScript())
             {
                 _despawnTimer = 0;
-                _chaseGUID = 0;
             }
 
             void Reset() override
@@ -1163,16 +1162,16 @@ class npc_ball_of_flame : public CreatureScript
 
             void MovementInform(uint32 type, uint32 id) override
             {
-                if (type == CHASE_MOTION_TYPE && id == GUID_LOPART(_chaseGUID) && _chaseGUID)
+                if (type == CHASE_MOTION_TYPE && id == _chaseGUID.GetCounter() && !_chaseGUID.IsEmpty())
                 {
                     me->RemoveAurasDueToSpell(SPELL_BALL_OF_FLAMES_PERIODIC);
                     DoCast(me, SPELL_FLAMES);
                     _despawnTimer = 1000;
-                    _chaseGUID = 0;
+                    _chaseGUID.Clear();
                 }
             }
 
-            void SetGUID(uint64 guid, int32 /*type*/) override
+            void SetGUID(ObjectGuid guid, int32 /*type*/) override
             {
                 _chaseGUID = guid;
             }
@@ -1213,7 +1212,7 @@ class npc_ball_of_flame : public CreatureScript
             }
 
         private:
-            uint64 _chaseGUID;
+            ObjectGuid _chaseGUID;
             InstanceScript* _instance;
             uint32 _despawnTimer;
         };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -153,7 +153,7 @@ public:
 
         void EnterEvadeMode() override
         {
-            if (Creature* muru = ObjectAccessor::GetCreature(*me, instance->GetData64(DATA_MURU)))
+            if (Creature* muru = ObjectAccessor::GetCreature(*me, instance->GetGuidData(DATA_MURU)))
                 muru->AI()->Reset(); // Reset encounter.
             me->DisappearAndDie();
             summons.DespawnAll();
@@ -183,7 +183,7 @@ public:
         {
             DarkFiend = false;
             HasEnraged = false;
-            EntropiusGUID = 0;
+            EntropiusGUID.Clear();
         }
 
         void Reset() override
@@ -207,7 +207,7 @@ public:
 
         void DamageTaken(Unit* /*done_by*/, uint32 &damage) override
         {
-            if (damage > me->GetHealth() && events.IsInPhase(PHASE_ONE))
+            if (damage >= me->GetHealth() && events.IsInPhase(PHASE_ONE))
             {
                 damage = 0;
                 me->RemoveAllAuras();
@@ -247,14 +247,11 @@ public:
                         DoCastAOE(SPELL_DARKNESS);
                     }
                     else
-                    {
-                        DarkFiend = false;
                         me->SummonCreatureGroup(CREATURE_GROUP_DARKFIENDS);
-                    }
                     events.ScheduleEvent(EVENT_DARKNESS, DarkFiend ? 3000 : 42000, 0, PHASE_ONE);
                     break;
                 case EVENT_SUMMON_HUMANOIDS:
-                    me->SummonCreatureGroup(CREATURE_GROUP_DARKFIENDS);
+                    me->SummonCreatureGroup(CREATURE_GROUP_HUMANOIDS);
                     events.ScheduleEvent(EVENT_SUMMON_HUMANOIDS, 60000, 0, PHASE_ONE);
                     break;
                 case EVENT_SUMMON_SENTINEL:
@@ -278,7 +275,7 @@ public:
     private:
         bool DarkFiend;
         bool HasEnraged;
-        uint64 EntropiusGUID;
+        ObjectGuid EntropiusGUID;
     };
 
     CreatureAI* GetAI(Creature* creature) const override
@@ -334,7 +331,7 @@ public:
 
         void JustSummoned(Creature* summoned) override
         {
-            if (Player* target = ObjectAccessor::GetPlayer(*me, instance->GetData64(DATA_PLAYER_GUID)))
+            if (Player* target = ObjectAccessor::GetPlayer(*me, instance->GetGuidData(DATA_PLAYER_GUID)))
                 summoned->AI()->AttackStart(target);
 
             Summons.Summon(summoned);
@@ -412,9 +409,14 @@ public:
 
         void SpellHit(Unit* /*caster*/, const SpellInfo* Spell) override
         {
-            for (uint8 i = 0; i < 3; ++i)
-                if (Spell->Effects[i].Effect == 38)
+            for (SpellEffectInfo const* effect : Spell->GetEffectsForDifficulty(DIFFICULTY_NONE))
+            {
+                if (effect && effect->Effect == 38)
+                {
                     me->DisappearAndDie();
+                    return;
+                }
+            }
         }
 
         void UpdateAI(uint32 diff) override
@@ -555,7 +557,7 @@ public:
         {
             if (SpellTimer <= diff)
             {
-                Unit* Victim = ObjectAccessor::GetUnit(*me, instance->GetData64(DATA_PLAYER_GUID));
+                Unit* Victim = ObjectAccessor::GetUnit(*me, instance->GetGuidData(DATA_PLAYER_GUID));
                 switch (NeedForAHack)
                 {
                     case 0:
@@ -574,7 +576,7 @@ public:
                     case 2:
                         SpellTimer = 400;
                         NeedForAHack = 3;
-                        me->RemoveAura(SPELL_BLACKHOLE_GROW, 1);
+                        me->RemoveAura(SPELL_BLACKHOLE_GROW);
                         break;
                     case 3:
                         SpellTimer = urand(400, 900);

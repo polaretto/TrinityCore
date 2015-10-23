@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -27,20 +27,18 @@ class pet_commandscript : public CommandScript
 public:
     pet_commandscript() : CommandScript("pet_commandscript") { }
 
-    ChatCommand* GetCommands() const override
+    std::vector<ChatCommand> GetCommands() const override
     {
-        static ChatCommand petCommandTable[] =
+        static std::vector<ChatCommand> petCommandTable =
         {
-            { "create",  rbac::RBAC_PERM_COMMAND_PET_CREATE,  false, &HandlePetCreateCommand,  "", NULL },
-            { "learn",   rbac::RBAC_PERM_COMMAND_PET_LEARN,   false, &HandlePetLearnCommand,   "", NULL },
-            { "unlearn", rbac::RBAC_PERM_COMMAND_PET_UNLEARN, false, &HandlePetUnlearnCommand, "", NULL },
-            { NULL,      0,                             false, NULL,                     "", NULL }
+            { "create",  rbac::RBAC_PERM_COMMAND_PET_CREATE,  false, &HandlePetCreateCommand,  "" },
+            { "learn",   rbac::RBAC_PERM_COMMAND_PET_LEARN,   false, &HandlePetLearnCommand,   "" },
+            { "unlearn", rbac::RBAC_PERM_COMMAND_PET_UNLEARN, false, &HandlePetUnlearnCommand, "" },
         };
 
-        static ChatCommand commandTable[] =
+        static std::vector<ChatCommand> commandTable =
         {
             { "pet", rbac::RBAC_PERM_COMMAND_PET, false, NULL, "", petCommandTable },
-            { NULL,  0,                     false, NULL, "", NULL }
         };
         return commandTable;
     }
@@ -65,7 +63,7 @@ public:
             return false;
         }
 
-        if (player->GetPetGUID())
+        if (!player->GetPetGUID().IsEmpty())
         {
             handler->PSendSysMessage("You already have a pet");
             handler->SetSentErrorMessage(true);
@@ -85,7 +83,7 @@ public:
         creatureTarget->RemoveCorpse();
         creatureTarget->SetHealth(0); // just for nice GM-mode view
 
-        pet->SetUInt64Value(UNIT_FIELD_CREATEDBY, player->GetGUID());
+        pet->SetGuidValue(UNIT_FIELD_CREATEDBY, player->GetGUID());
         pet->SetUInt32Value(UNIT_FIELD_FACTIONTEMPLATE, player->getFaction());
 
         if (!pet->InitStatsForLevel(creatureTarget->getLevel()))

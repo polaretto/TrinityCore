@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -226,7 +226,6 @@ class npc_iron_roots : public CreatureScript
                 me->ApplySpellImmune(0, IMMUNITY_ID, 49560, true); // Death Grip
                 me->setFaction(14);
                 me->SetReactState(REACT_PASSIVE);
-                summonerGUID = 0;
             }
 
             void IsSummonedBy(Unit* summoner) override
@@ -251,7 +250,7 @@ class npc_iron_roots : public CreatureScript
             }
 
         private:
-            uint64 summonerGUID;
+            ObjectGuid summonerGUID;
         };
 
         CreatureAI* GetAI(Creature* creature) const override
@@ -284,7 +283,7 @@ class boss_freya : public CreatureScript
 
                 for (uint8 i = 0; i < 3; ++i)
                     for (uint8 n = 0; n < 2; ++n)
-                        ElementalGUID[i][n] = 0;
+                        ElementalGUID[i][n].Clear();
                 for (uint8 i = 0; i < 6; ++i)
                     for (uint8 n = 0; n < 2; ++n)
                         deforestation[i][n] = 0;
@@ -297,7 +296,7 @@ class boss_freya : public CreatureScript
                     random[n] = false;
             }
 
-            uint64 ElementalGUID[3][2];
+            ObjectGuid ElementalGUID[3][2];
 
             uint32 deforestation[6][2];
             uint32 elementalTimer[2];
@@ -340,7 +339,7 @@ class boss_freya : public CreatureScript
                 Creature* Elder[3];
                 for (uint8 n = 0; n < 3; ++n)
                 {
-                    Elder[n] = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_BRIGHTLEAF + n));
+                    Elder[n] = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_BRIGHTLEAF + n));
                     if (Elder[n] && Elder[n]->IsAlive())
                     {
                         me->AddAura(SPELL_DRAINED_OF_POWER, Elder[n]);
@@ -595,11 +594,11 @@ class boss_freya : public CreatureScript
                 const uint32 summonSpell[2][4] =
                 {
                               /* 0Elder, 1Elder, 2Elder, 3Elder */
-                    /* 10N */    {62950, 62953, 62955, 62957},
-                    /* 25N */    {62952, 62954, 62956, 62958}
+                    /* 10N */    {62950, 62952, 62953, 62954},
+                    /* 25N */    {62955, 62956, 62957, 62958}
                 };
 
-                me->CastSpell((Unit*)NULL, summonSpell[me->GetMap()->GetDifficulty()][elderCount], true);
+                me->CastSpell((Unit*)NULL, summonSpell[me->GetMap()->GetDifficultyID() - DIFFICULTY_10_N][elderCount], true);
 
                 Talk(SAY_DEATH);
                 me->SetReactState(REACT_PASSIVE);
@@ -612,17 +611,16 @@ class boss_freya : public CreatureScript
                 me->DespawnOrUnsummon(7500);
                 me->CastSpell(me, SPELL_KNOCK_ON_WOOD_CREDIT, true);
 
-                Creature* Elder[3];
                 for (uint8 n = 0; n < 3; ++n)
                 {
-                    Elder[n] = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_BRIGHTLEAF + n));
-                    if (Elder[n] && Elder[n]->IsAlive())
+                    Creature* Elder = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_BRIGHTLEAF + n));
+                    if (Elder && Elder->IsAlive())
                     {
-                        Elder[n]->RemoveAllAuras();
-                        Elder[n]->AttackStop();
-                        Elder[n]->CombatStop(true);
-                        Elder[n]->DeleteThreatList();
-                        Elder[n]->GetAI()->DoAction(ACTION_ELDER_FREYA_KILLED);
+                        Elder->RemoveAllAuras();
+                        Elder->AttackStop();
+                        Elder->CombatStop(true);
+                        Elder->DeleteThreatList();
+                        Elder->GetAI()->DoAction(ACTION_ELDER_FREYA_KILLED);
                     }
                 }
             }
@@ -715,10 +713,10 @@ class boss_elder_brightleaf : public CreatureScript
 
                 if (killer->GetTypeId() == TYPEID_PLAYER)
                 {
-                    if (Creature* Ironbranch = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_IRONBRANCH)))
+                    if (Creature* Ironbranch = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_IRONBRANCH)))
                         Ironbranch->AI()->DoAction(ACTION_ELDER_DEATH);
 
-                    if (Creature* Stonebark = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_STONEBARK)))
+                    if (Creature* Stonebark = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_STONEBARK)))
                         Stonebark->AI()->DoAction(ACTION_ELDER_DEATH);
                 }
             }
@@ -751,8 +749,8 @@ class boss_elder_brightleaf : public CreatureScript
                         case EVENT_SOLAR_FLARE:
                         {
                             uint8 stackAmount = 0;
-                            if (me->GetAura(SPELL_FLUX_AURA))
-                                stackAmount = me->GetAura(SPELL_FLUX_AURA)->GetStackAmount();
+                            if (Aura* aura = me->GetAura(SPELL_FLUX_AURA))
+                                stackAmount = aura->GetStackAmount();
                             me->CastCustomSpell(SPELL_SOLAR_FLARE, SPELLVALUE_MAX_TARGETS, stackAmount, me, false);
                             events.ScheduleEvent(EVENT_SOLAR_FLARE, urand(5000, 10000));
                             break;
@@ -822,10 +820,10 @@ class boss_elder_stonebark : public CreatureScript
 
                 if (killer->GetTypeId() == TYPEID_PLAYER)
                 {
-                    if (Creature* Ironbranch = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_IRONBRANCH)))
+                    if (Creature* Ironbranch = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_IRONBRANCH)))
                         Ironbranch->AI()->DoAction(ACTION_ELDER_DEATH);
 
-                    if (Creature* Brightleaf = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_BRIGHTLEAF)))
+                    if (Creature* Brightleaf = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_BRIGHTLEAF)))
                         Brightleaf->AI()->DoAction(ACTION_ELDER_DEATH);
                 }
             }
@@ -935,10 +933,10 @@ class boss_elder_ironbranch : public CreatureScript
 
                 if (killer->GetTypeId() == TYPEID_PLAYER)
                 {
-                    if (Creature* Brightleaf = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_BRIGHTLEAF)))
+                    if (Creature* Brightleaf = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_BRIGHTLEAF)))
                         Brightleaf->AI()->DoAction(ACTION_ELDER_DEATH);
 
-                    if (Creature* Stonebark = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_STONEBARK)))
+                    if (Creature* Stonebark = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_STONEBARK)))
                         Stonebark->AI()->DoAction(ACTION_ELDER_DEATH);
                 }
             }
@@ -1076,7 +1074,7 @@ class npc_ancient_water_spirit : public CreatureScript
             {
                 Initialize();
                 instance = me->GetInstanceScript();
-                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_FREYA)))
+                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_FREYA)))
                     waveCount = ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->trioWaveCount;
                 else
                     waveCount = 0;
@@ -1114,7 +1112,7 @@ class npc_ancient_water_spirit : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
-                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_FREYA)))
+                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_FREYA)))
                 {
                     ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->checkElementalAlive[waveCount] = false;
                     ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->LasherDead(1);
@@ -1144,7 +1142,7 @@ class npc_storm_lasher : public CreatureScript
             {
                 Initialize();
                 instance = me->GetInstanceScript();
-                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_FREYA)))
+                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_FREYA)))
                     waveCount = ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->trioWaveCount;
                 else
                     waveCount = 0;
@@ -1188,7 +1186,7 @@ class npc_storm_lasher : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
-                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_FREYA)))
+                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_FREYA)))
                 {
                     ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->checkElementalAlive[waveCount] = false;
                     ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->LasherDead(2);
@@ -1218,7 +1216,7 @@ class npc_snaplasher : public CreatureScript
             npc_snaplasherAI(Creature* creature) : ScriptedAI(creature)
             {
                 instance = me->GetInstanceScript();
-                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_FREYA)))
+                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_FREYA)))
                     waveCount = ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->trioWaveCount;
                 else
                     waveCount = 0;
@@ -1237,7 +1235,7 @@ class npc_snaplasher : public CreatureScript
 
             void JustDied(Unit* /*killer*/) override
             {
-                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetData64(BOSS_FREYA)))
+                if (Creature* Freya = ObjectAccessor::GetCreature(*me, instance->GetGuidData(BOSS_FREYA)))
                 {
                     ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->checkElementalAlive[waveCount] = false;
                     ENSURE_AI(boss_freya::boss_freyaAI, Freya->AI())->LasherDead(4);
@@ -1543,17 +1541,17 @@ class spell_freya_attuned_to_nature_dose_reduction : public SpellScriptLoader
                     case SPELL_ATTUNED_TO_NATURE_2_DOSE_REDUCTION:
                         if (target->HasAura(GetEffectValue()))
                             for (uint8 n = 0; n < 2; ++n)
-                                target->RemoveAuraFromStack(GetEffectValue(), 0, AURA_REMOVE_BY_DEFAULT);
+                                target->RemoveAuraFromStack(GetEffectValue());
                         break;
                     case SPELL_ATTUNED_TO_NATURE_10_DOSE_REDUCTION:
                         if (target->HasAura(GetEffectValue()))
                             for (uint8 n = 0; n < 10; ++n)
-                                target->RemoveAuraFromStack(GetEffectValue(), 0, AURA_REMOVE_BY_DEFAULT);
+                                target->RemoveAuraFromStack(GetEffectValue());
                         break;
                     case SPELL_ATTUNED_TO_NATURE_25_DOSE_REDUCTION:
                         if (target->HasAura(GetEffectValue()))
                             for (uint8 n = 0; n < 25; ++n)
-                                target->RemoveAuraFromStack(GetEffectValue(), 0, AURA_REMOVE_BY_DEFAULT);
+                                target->RemoveAuraFromStack(GetEffectValue());
                         break;
                     default:
                         break;
@@ -1584,7 +1582,7 @@ class spell_freya_iron_roots : public SpellScriptLoader
             void HandleSummon(SpellEffIndex effIndex)
             {
                 PreventHitDefaultEffect(effIndex);
-                uint32 entry = uint32(GetSpellInfo()->Effects[effIndex].MiscValue);
+                uint32 entry = uint32(GetSpellInfo()->GetEffect(effIndex)->MiscValue);
 
                 Position pos = GetCaster()->GetPosition();
                 // Not good at all, but this prevents having roots in a different position then player

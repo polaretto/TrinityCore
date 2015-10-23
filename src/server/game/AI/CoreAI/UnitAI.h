@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2014 TrinityCore <http://www.trinitycore.org/>
+ * Copyright (C) 2008-2015 TrinityCore <http://www.trinitycore.org/>
  * Copyright (C) 2005-2009 MaNGOS <http://getmangos.com/>
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -22,6 +22,7 @@
 #include "Define.h"
 #include "Unit.h"
 #include "Containers.h"
+#include "EventMap.h"
 #include <list>
 
 class Player;
@@ -128,7 +129,7 @@ class UnitAI
 
         virtual void InitializeAI() { if (!me->isDead()) Reset(); }
 
-        virtual void Reset() { };
+        virtual void Reset() { }
 
         // Called when unit is charmed
         virtual void OnCharmed(bool apply) = 0;
@@ -137,8 +138,8 @@ class UnitAI
         virtual void DoAction(int32 /*param*/) { }
         virtual uint32 GetData(uint32 /*id = 0*/) const { return 0; }
         virtual void SetData(uint32 /*id*/, uint32 /*value*/) { }
-        virtual void SetGUID(uint64 /*guid*/, int32 /*id*/ = 0) { }
-        virtual uint64 GetGUID(int32 /*id*/ = 0) const { return 0; }
+        virtual void SetGUID(ObjectGuid /*guid*/, int32 /*id*/ = 0) { }
+        virtual ObjectGuid GetGUID(int32 /*id*/ = 0) const { return ObjectGuid::Empty; }
 
         Unit* SelectTarget(SelectAggroTarget targetType, uint32 position = 0, float dist = 0.0f, bool playerOnly = false, int32 aura = 0);
         // Select the targets satisfying the predicate.
@@ -179,7 +180,7 @@ class UnitAI
                 case SELECT_TARGET_RANDOM:
                 {
                     std::list<Unit*>::iterator itr = targetList.begin();
-                    std::advance(itr, urand(position, targetList.size() - 1));
+                    std::advance(itr, urand(position, uint32(targetList.size() - 1)));
                     return *itr;
                 }
                 default:
@@ -238,24 +239,20 @@ class UnitAI
 
         void AttackStartCaster(Unit* victim, float dist);
 
-        void DoAddAuraToAllHostilePlayers(uint32 spellid);
         void DoCast(uint32 spellId);
         void DoCast(Unit* victim, uint32 spellId, bool triggered = false);
-        void DoCastToAllHostilePlayers(uint32 spellid, bool triggered = false);
         void DoCastVictim(uint32 spellId, bool triggered = false);
         void DoCastAOE(uint32 spellId, bool triggered = false);
 
-        float DoGetSpellMaxRange(uint32 spellId, bool positive = false);
-
         void DoMeleeAttackIfReady();
-        bool DoSpellAttackIfReady(uint32 spell);
+        bool DoSpellAttackIfReady(uint32 spellId);
 
         static AISpellInfoType* AISpellInfo;
         static void FillAISpellInfo();
 
         virtual void sGossipHello(Player* /*player*/) { }
-        virtual void sGossipSelect(Player* /*player*/, uint32 /*sender*/, uint32 /*action*/) { }
-        virtual void sGossipSelectCode(Player* /*player*/, uint32 /*sender*/, uint32 /*action*/, char const* /*code*/) { }
+        virtual void sGossipSelect(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/) { }
+        virtual void sGossipSelectCode(Player* /*player*/, uint32 /*menuId*/, uint32 /*gossipListId*/, char const* /*code*/) { }
         virtual void sQuestAccept(Player* /*player*/, Quest const* /*quest*/) { }
         virtual void sQuestSelect(Player* /*player*/, Quest const* /*quest*/) { }
         virtual void sQuestReward(Player* /*player*/, Quest const* /*quest*/, uint32 /*opt*/) { }
