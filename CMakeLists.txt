@@ -11,6 +11,9 @@
 # Set projectname (must be done AFTER setting configurationtypes)
 project(TrinityCore)
 
+#Enable CTest
+include(CTest)
+
 # CMake policies (can not be handled elsewhere)
 cmake_minimum_required(VERSION 2.8.9)
 cmake_policy(SET CMP0005 OLD)
@@ -53,6 +56,9 @@ include(CheckPlatform)
 # basic packagesearching and setup (further support will be needed, this is a preliminary release!)
 set(OPENSSL_EXPECTED_VERSION 1.0.0)
 
+# Enable testing
+set(TESTING ON)
+
 find_package(PCHSupport)
 find_package(OpenSSL REQUIRED)
 find_package(Threads REQUIRED)
@@ -76,28 +82,26 @@ include(cmake/genrev.cmake)
 # print out the results before continuing
 include(cmake/showoptions.cmake)
 
+# Download gtest at configure time
+include(cmake/add_dl_project.cmake)
+
 # add dependencies
 add_subdirectory(dep)
 
 # add core sources
 add_subdirectory(src)
 
-# Enable testing
-set(BUILD_TESTING ON)
-include(CTest)
-
-# Download gtest at configure time
-# include(add_dl_project.cmake)
-# add_dl_project(PROJ     gtest
-#               URL      https://googletest.googlecode.com/files/gtest-1.7.0.zip
-#               URL_HASH SHA1=f85f6d2481e2c6c4a18539e391aa4ea8ab0394af
-#               EXCLUDE_FROM_ALL
-# )
+#add gtest project
+add_dl_project(PROJ     gtest
+               URL      https://googletest.googlecode.com/files/gtest-1.7.0.zip
+               URL_HASH SHA1=f85f6d2481e2c6c4a18539e391aa4ea8ab0394af
+               EXCLUDE_FROM_ALL
+)
 
 # gtest doesn't add a public include directory to the target for
 # its headers, so we have to explicitly add it ourselves so that
 # client code finds gtest/gtest.h
-# target_include_directories(gtest INTERFACE "${CMAKE_BINARY_DIR}/gtest-src/include")
+target_include_directories(gtest INTERFACE "${CMAKE_BINARY_DIR}/gtest-src/include")
 
 # Example for how to define a test which uses gtest
 # add_executable(mytest tester.cpp)
